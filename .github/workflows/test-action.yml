@@ -46,6 +46,9 @@ jobs:
   test-action:
     name: Test Auto Assign Copilot Action
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      issues: write
 
     steps:
       - name: Checkout code
@@ -85,6 +88,9 @@ jobs:
   test-all-input-combinations:
     name: Test All Input Combinations
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      issues: write
     strategy:
       fail-fast: false
       matrix:

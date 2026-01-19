@@ -1,5 +1,3 @@
-#!/usr/bin/env node
-
 /**
  * Test suite for the auto-assign-copilot action workflow
  */
