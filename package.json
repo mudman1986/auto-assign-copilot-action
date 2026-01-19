@@ -31,5 +31,8 @@
 		"testEnvironment": "node",
 		"testMatch": ["**/src/**/*.test.js"],
 		"collectCoverageFrom": ["src/**/*.js", "!src/**/*.test.js"]
+	},
+	"standard": {
+		"env": ["jest"]
 	}
 }
