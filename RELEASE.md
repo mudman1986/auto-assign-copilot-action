@@ -51,7 +51,8 @@ The release process runs automatically on every push to the `main` branch:
 4. **Version Bump**: package.json version is updated
 5. **Git Tag**: A new git tag is created (e.g., v1.2.3)
 6. **GitHub Release**: A GitHub release is created with the changelog
-7. **Commit**: Changes are committed back to the repository
+
+**Note**: Due to branch protection rules requiring PRs, the changelog and version updates are NOT committed back to the repository. Instead, they are only reflected in the GitHub releases. This is a common pattern for repositories with strict branch protection.
 
 ## Writing Commit Messages
 

@@ -62,14 +62,12 @@ describe('Release Configuration', () => {
       expect(npm[1].npmPublish).toBe(false)
     })
 
-    test('should have git plugin configured', () => {
+    test('should NOT have git plugin configured (not compatible with branch protection)', () => {
       const git = config.plugins.find(p =>
         Array.isArray(p) && p[0] === '@semantic-release/git'
       )
 
-      expect(git).toBeDefined()
-      expect(git[1].assets).toContain('CHANGELOG.md')
-      expect(git[1].assets).toContain('package.json')
+      expect(git).toBeUndefined()
     })
 
     test('should have github plugin configured', () => {
@@ -122,7 +120,7 @@ describe('Release Configuration', () => {
 
       expect(packageJson.devDependencies['semantic-release']).toBeDefined()
       expect(packageJson.devDependencies['@semantic-release/changelog']).toBeDefined()
-      expect(packageJson.devDependencies['@semantic-release/git']).toBeDefined()
+      // Note: @semantic-release/git is no longer needed as it's incompatible with branch protection
     })
   })
 })
