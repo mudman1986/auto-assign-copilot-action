@@ -38,11 +38,11 @@ jobs:
         id: generate-changelog
         run: |
           echo "Analyzing commits for potential release..."
-          npx semantic-release --dry-run --no-ci > /tmp/release-output.txt 2>&1 || true
+          npx semantic-release --dry-run --no-ci > "${{ runner.temp }}/release-output.txt" 2>&1 || true
           
           # Check if a release would be triggered and extract version using portable grep
-          if grep -q "The next release version is" /tmp/release-output.txt; then
-            VERSION=$(grep "The next release version is" /tmp/release-output.txt | sed -n 's/.*The next release version is \([0-9]\+\.[0-9]\+\.[0-9]\+\).*/\1/p' | head -1)
+          if grep -q "The next release version is" "${{ runner.temp }}/release-output.txt"; then
+            VERSION=$(grep "The next release version is" "${{ runner.temp }}/release-output.txt" | sed -n 's/.*The next release version is \([0-9]\+\.[0-9]\+\.[0-9]\+.*\)/\1/p' | head -1)
             if [ -n "$VERSION" ]; then
               echo "version=$VERSION" >> $GITHUB_OUTPUT
               echo "has_release=true" >> $GITHUB_OUTPUT
