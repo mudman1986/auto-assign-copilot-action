@@ -13,14 +13,19 @@ on:
 
 jobs:
   build:
-    name: Build Action
+    name: Build and Release
     runs-on: ubuntu-latest
     permissions:
       contents: write
+      issues: write
+      pull-requests: write
+      id-token: write
 
     steps:
       - name: Checkout code
         uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
 
       - name: Setup Node.js
         uses: actions/setup-node@v6
@@ -61,58 +66,45 @@ jobs:
           git diff dist/
           exit 1
 
-  release:
-    name: Release
-    runs-on: ubuntu-latest
-    needs: build
-    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
-    permissions:
-      contents: write
-      issues: write
-      pull-requests: write
-      id-token: write
-
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v6
-        with:
-          fetch-depth: 0
-          persist-credentials: false
-
-      - name: Setup Node.js
-        uses: actions/setup-node@v6
-        with:
-          node-version: '20'
-          cache: 'npm'
-
-      - name: Install dependencies
-        run: npm ci
-
-      - name: Build action
-        run: npm run build
-
-      - name: Commit built files
-        id: commit-build
-        run: |
-          git config user.name "github-actions[bot]"
-          git config user.email "github-actions[bot]@users.noreply.github.com"
-          
-          if [ -n "$(git status --porcelain dist/)" ]; then
-            git add dist/
-            git commit -m "chore: rebuild dist/ [skip ci]"
-            echo "committed=true" >> $GITHUB_OUTPUT
-          else
-            echo "committed=false" >> $GITHUB_OUTPUT
-          fi
-
       - name: Semantic Release
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: npx semantic-release
 
-      - name: Publish to Marketplace
-        if: github.event.inputs.publish-marketplace == 'true'
+      - name: Get latest release
+        if: github.event_name == 'workflow_dispatch' && github.event.inputs.publish-marketplace == 'true' && github.ref == 'refs/heads/main'
+        id: get-release
         run: |
-          echo "Marketplace publishing would happen here"
-          echo "Note: Marketplace publishing requires manual approval in GitHub UI"
-          echo "To publish: Go to repository releases and click 'Publish to Marketplace' on the desired release"
+          LATEST_TAG=$(git describe --tags --abbrev=0 2>/dev/null || echo "")
+          if [ -n "$LATEST_TAG" ]; then
+            echo "tag=$LATEST_TAG" >> $GITHUB_OUTPUT
+            echo "Found latest tag: $LATEST_TAG"
+          else
+            echo "::error::No release tags found. Please create a release first."
+            exit 1
+          fi
+
+      - name: Publish to GitHub Marketplace
+        if: github.event_name == 'workflow_dispatch' && github.event.inputs.publish-marketplace == 'true' && github.ref == 'refs/heads/main'
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          TAG="${{ steps.get-release.outputs.tag }}"
+          echo "Publishing release $TAG to GitHub Marketplace..."
+          
+          # GitHub doesn't provide a direct API to publish to marketplace
+          # This requires manual approval in the GitHub UI
+          # We'll update the release to indicate it's ready for marketplace publishing
+          
+          gh release view "$TAG" --json url --jq '.url' || {
+            echo "::error::Release $TAG not found"
+            exit 1
+          }
+          
+          echo "::notice::Release $TAG is ready for marketplace publishing"
+          echo "::notice::To complete marketplace publishing:"
+          echo "::notice::1. Go to https://github.com/${{ github.repository }}/releases/tag/$TAG"
+          echo "::notice::2. Click 'Edit release'"
+          echo "::notice::3. Check 'Publish this Action to the GitHub Marketplace'"
+          echo "::notice::4. Review and complete the marketplace listing"
