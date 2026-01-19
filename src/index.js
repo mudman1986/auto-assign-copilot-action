@@ -31,27 +31,20 @@ async function run () {
       .map((label) => label.trim())
       .filter((label) => label.length > 0)
 
-    console.log(
-      'Running auto-assign-copilot action:\n' +
-        `  mode: ${mode}\n` +
-        `  force: ${force}\n` +
-        `  labelOverride: ${labelOverride}\n` +
-        `  dryRun: ${dryRun}\n` +
-        `  allowParentIssues: ${allowParentIssues}\n` +
-        `  refactorThreshold: ${refactorThreshold}\n` +
-        `  skipLabels: ${JSON.stringify(skipLabels)}`
-    )
+    console.log(`Running auto-assign-copilot action:
+  mode: ${mode}
+  force: ${force}
+  labelOverride: ${labelOverride}
+  dryRun: ${dryRun}
+  allowParentIssues: ${allowParentIssues}
+  refactorThreshold: ${refactorThreshold}
+  skipLabels: ${JSON.stringify(skipLabels)}`)
 
     // Create authenticated Octokit client
     const octokit = github.getOctokit(token)
 
     // Get the context
     const context = github.context
-
-    // Track outputs
-    let assignedIssueNumber = ''
-    let assignedIssueUrl = ''
-    const assignmentMode = mode
 
     // Execute the workflow logic
     const result = await executeWorkflow({
@@ -66,15 +59,12 @@ async function run () {
       refactorThreshold
     })
 
-    // Set outputs if assignment was made
-    if (result && result.issue) {
-      assignedIssueNumber = result.issue.number.toString()
-      assignedIssueUrl = result.issue.url
-    }
-
+    // Set outputs
+    const assignedIssueNumber = result?.issue?.number?.toString() || ''
+    const assignedIssueUrl = result?.issue?.url || ''
     core.setOutput('assigned-issue-number', assignedIssueNumber)
     core.setOutput('assigned-issue-url', assignedIssueUrl)
-    core.setOutput('assignment-mode', assignmentMode)
+    core.setOutput('assignment-mode', mode)
 
     console.log('✓ Action completed successfully')
   } catch (error) {

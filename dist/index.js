@@ -30253,15 +30253,8 @@ function shouldSkipIssue (issue, allowParentIssues = false, skipLabels = []) {
  * @returns {Array} - Array of label objects with normalized structure
  */
 function normalizeIssueLabels (issue) {
-  // Handle GraphQL structure: { labels: { nodes: [...] } }
-  if (issue.labels && issue.labels.nodes) {
-    return issue.labels.nodes
-  }
-  // Handle flattened structure: { labels: [...] }
-  if (Array.isArray(issue.labels)) {
-    return issue.labels
-  }
-  // No labels
+  if (issue.labels?.nodes) return issue.labels.nodes
+  if (Array.isArray(issue.labels)) return issue.labels
   return []
 }
 
@@ -30324,10 +30317,8 @@ function parseIssueData (issue) {
     body: issue.body || '',
     isAssigned: issue.assignees.nodes.length > 0,
     // Check for ANY sub-issues (open or closed) - parent issues should not be assigned
-    hasSubIssues: !!(issue.trackedIssues && issue.trackedIssues.totalCount > 0),
-    isSubIssue: !!(
-      issue.trackedInIssues && issue.trackedInIssues.totalCount > 0
-    ),
+    hasSubIssues: issue.trackedIssues?.totalCount > 0,
+    isSubIssue: issue.trackedInIssues?.totalCount > 0,
     isRefactorIssue: issue.labels.nodes.some((l) => l.name === 'refactor'),
     labels: issue.labels.nodes
   }
@@ -30444,9 +30435,6 @@ module.exports = async ({
   refactorThreshold
 }) => {
   const helpers = __nccwpck_require__(6636)
-
-  // Track assigned issue for return value
-  let assignedIssue = null
 
   /**
    * Fetch sub-issues for an issue using the REST API
@@ -30639,15 +30627,12 @@ module.exports = async ({
 
   // Step 3: Handle different modes
   if (effectiveMode === 'refactor') {
-    assignedIssue = await handleRefactorMode()
+    return handleRefactorMode()
   } else if (effectiveMode === 'auto') {
-    assignedIssue = await assignNextIssue(labelOverride)
+    return assignNextIssue(labelOverride)
   } else {
     throw new Error(`Unknown mode: ${effectiveMode}`)
   }
-
-  // Return the assigned issue information
-  return assignedIssue ? { issue: assignedIssue } : null
 
   /**
    * Handle refactor mode: assign existing refactor issue or create new one
@@ -30732,7 +30717,7 @@ module.exports = async ({
           `[DRY RUN] Would assign refactor issue #${availableRefactorIssue.number} to Copilot (ID: ${copilotBotId})`
         )
         console.log(`[DRY RUN] Issue URL: ${availableRefactorIssue.url}`)
-        return availableRefactorIssue
+        return { issue: availableRefactorIssue }
       }
 
       console.log(
@@ -30769,11 +30754,11 @@ module.exports = async ({
       )
       console.log(`  Title: ${availableRefactorIssue.title}`)
       console.log(`  URL: ${availableRefactorIssue.url}`)
-      return availableRefactorIssue
+      return { issue: availableRefactorIssue }
     }
 
     console.log('No available refactor issues found - creating a new one')
-    return await createRefactorIssue()
+    return createRefactorIssue()
   }
 
   /**
@@ -30812,10 +30797,12 @@ module.exports = async ({
       )
       // Return a mock issue for dry-run mode
       return {
-        id: 'dry-run-id',
-        number: 0,
-        title: `refactor: codebase improvements - ${new Date().toISOString()}`,
-        url: '[DRY RUN - would create new refactor issue]'
+        issue: {
+          id: 'dry-run-id',
+          number: 0,
+          title: `refactor: codebase improvements - ${new Date().toISOString()}`,
+          url: '[DRY RUN - would create new refactor issue]'
+        }
       }
     }
 
@@ -30908,10 +30895,12 @@ module.exports = async ({
 
     // Return the created issue
     return {
-      id: res.createIssue.issue.id,
-      number: res.createIssue.issue.number,
-      title: res.createIssue.issue.title,
-      url: res.createIssue.issue.url
+      issue: {
+        id: res.createIssue.issue.id,
+        number: res.createIssue.issue.number,
+        title: res.createIssue.issue.title,
+        url: res.createIssue.issue.url
+      }
     }
   }
 
@@ -30986,47 +30975,11 @@ module.exports = async ({
       })
 
       // WORKAROUND: GraphQL trackedIssues returns 0 even when sub-issues exist
-      // Solution: Use REST API sub_issues endpoint (note: underscore, not hyphen)
+      // Solution: Use REST API sub_issues endpoint
       console.log('  Checking for sub-issues via REST API...')
-
-      // Check each issue for sub-issues using REST API
       for (const issue of issues.repository.issues.nodes) {
-        try {
-          // Use the REST API sub_issues endpoint: GET /repos/{owner}/{repo}/issues/{issue_number}/sub_issues
-          // IMPORTANT: endpoint uses underscore (sub_issues) not hyphen (sub-issues)
-          const subIssuesResponse = await github.request(
-            'GET /repos/{owner}/{repo}/issues/{issue_number}/sub_issues',
-            {
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              issue_number: issue.number,
-              per_page: 100,
-              headers: {
-                'X-GitHub-Api-Version': '2022-11-28'
-              }
-            }
-          )
-
-          const totalSubIssues = subIssuesResponse.data.length
-          const openSubIssues = subIssuesResponse.data.filter(
-            (subIssue) => subIssue.state === 'open'
-          )
-
-          if (totalSubIssues > 0) {
-            console.log(
-              `    #${issue.number}: Has ${totalSubIssues} sub-issues (${openSubIssues.length} open, ${totalSubIssues - openSubIssues.length} closed)`
-            )
-            issue.trackedIssues = { totalCount: totalSubIssues }
-          } else {
-            issue.trackedIssues = { totalCount: 0 }
-          }
-        } catch (error) {
-          // API call failed - log warning and treat as no sub-issues
-          console.log(
-            `    Warning: Could not check sub-issues for #${issue.number}: ${error.message}`
-          )
-          issue.trackedIssues = { totalCount: 0 }
-        }
+        const totalSubIssues = await getSubIssuesCount(issue.number)
+        issue.trackedIssues = { totalCount: totalSubIssues }
       }
 
       // Find first assignable issue using simplified helper function
@@ -31143,7 +31096,7 @@ module.exports = async ({
       )
 
       // If no regular issues are available, handle refactor mode
-      return await handleRefactorMode()
+      return handleRefactorMode()
     }
 
     // Assign the issue to Copilot
@@ -31153,7 +31106,7 @@ module.exports = async ({
       )
       console.log(`[DRY RUN] Issue title: ${issueToAssign.title}`)
       console.log(`[DRY RUN] Issue URL: ${issueToAssign.url}`)
-      return issueToAssign
+      return { issue: issueToAssign }
     }
 
     console.log(`Assigning issue #${issueToAssign.number} to Copilot...`)
@@ -31188,7 +31141,7 @@ module.exports = async ({
     )
     console.log(`  Title: ${issueToAssign.title}`)
     console.log(`  URL: ${issueToAssign.url}`)
-    return issueToAssign
+    return { issue: issueToAssign }
   }
 }
 
@@ -33139,27 +33092,20 @@ async function run () {
       .map((label) => label.trim())
       .filter((label) => label.length > 0)
 
-    console.log(
-      'Running auto-assign-copilot action:\n' +
-        `  mode: ${mode}\n` +
-        `  force: ${force}\n` +
-        `  labelOverride: ${labelOverride}\n` +
-        `  dryRun: ${dryRun}\n` +
-        `  allowParentIssues: ${allowParentIssues}\n` +
-        `  refactorThreshold: ${refactorThreshold}\n` +
-        `  skipLabels: ${JSON.stringify(skipLabels)}`
-    )
+    console.log(`Running auto-assign-copilot action:
+  mode: ${mode}
+  force: ${force}
+  labelOverride: ${labelOverride}
+  dryRun: ${dryRun}
+  allowParentIssues: ${allowParentIssues}
+  refactorThreshold: ${refactorThreshold}
+  skipLabels: ${JSON.stringify(skipLabels)}`)
 
     // Create authenticated Octokit client
     const octokit = github.getOctokit(token)
 
     // Get the context
     const context = github.context
-
-    // Track outputs
-    let assignedIssueNumber = ''
-    let assignedIssueUrl = ''
-    const assignmentMode = mode
 
     // Execute the workflow logic
     const result = await executeWorkflow({
@@ -33174,15 +33120,12 @@ async function run () {
       refactorThreshold
     })
 
-    // Set outputs if assignment was made
-    if (result && result.issue) {
-      assignedIssueNumber = result.issue.number.toString()
-      assignedIssueUrl = result.issue.url
-    }
-
+    // Set outputs
+    const assignedIssueNumber = result?.issue?.number?.toString() || ''
+    const assignedIssueUrl = result?.issue?.url || ''
     core.setOutput('assigned-issue-number', assignedIssueNumber)
     core.setOutput('assigned-issue-url', assignedIssueUrl)
-    core.setOutput('assignment-mode', assignmentMode)
+    core.setOutput('assignment-mode', mode)
 
     console.log('✓ Action completed successfully')
   } catch (error) {
