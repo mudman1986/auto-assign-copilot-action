@@ -388,7 +388,7 @@ module.exports = async ({
     // Create and assign issue to Copilot
     if (dryRun) {
       console.log(
-        `[DRY RUN] Would create refactor issue with title: Refactor - ${new Date().toISOString()}`
+        `[DRY RUN] Would create refactor issue with title: refactor: codebase improvements - ${new Date().toISOString()}`
       )
       console.log(
         `[DRY RUN] Would assign to Copilot bot (ID: ${copilotBotId})`
@@ -397,7 +397,7 @@ module.exports = async ({
       return {
         id: 'dry-run-id',
         number: 0,
-        title: `Refactor - ${new Date().toISOString()}`,
+        title: `refactor: codebase improvements - ${new Date().toISOString()}`,
         url: '[DRY RUN - would create new refactor issue]'
       }
     }
@@ -425,7 +425,7 @@ module.exports = async ({
       `,
       {
         repositoryId: repoId,
-        title: `Refactor - ${new Date().toISOString()}`,
+        title: `refactor: codebase improvements - ${new Date().toISOString()}`,
         body: [
           'Review the codebase and make improvements:',
           '',
