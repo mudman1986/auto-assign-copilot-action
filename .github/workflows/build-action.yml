@@ -42,7 +42,7 @@ jobs:
           
           # Check if a release would be triggered and extract version using portable grep
           if grep -q "The next release version is" /tmp/release-output.txt; then
-            VERSION=$(grep "The next release version is" /tmp/release-output.txt | sed -n 's/.*The next release version is \([0-9][0-9]*\.[0-9][0-9]*\.[0-9][0-9]*\).*/\1/p' | head -1)
+            VERSION=$(grep "The next release version is" /tmp/release-output.txt | sed -n 's/.*The next release version is \([0-9]\+\.[0-9]\+\.[0-9]\+\).*/\1/p' | head -1)
             if [ -n "$VERSION" ]; then
               echo "version=$VERSION" >> $GITHUB_OUTPUT
               echo "has_release=true" >> $GITHUB_OUTPUT
@@ -86,7 +86,13 @@ EOF
           
           # Check if there are actual changes
           if [ -n "$(git status --porcelain package.json package-lock.json CHANGELOG.md 2>/dev/null)" ]; then
-            git add package.json package-lock.json CHANGELOG.md 2>/dev/null || git add package.json CHANGELOG.md
+            # Add package.json and CHANGELOG.md
+            git add package.json CHANGELOG.md
+            
+            # Add package-lock.json if it exists and has changes
+            if [ -f package-lock.json ] && git status --porcelain package-lock.json 2>/dev/null | grep -q .; then
+              git add package-lock.json
+            fi
             
             if git commit -m "chore: prepare release ${{ steps.generate-changelog.outputs.version }} [skip ci]"; then
               if ! git push; then
