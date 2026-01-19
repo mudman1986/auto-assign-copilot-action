@@ -33,6 +33,11 @@
 		"collectCoverageFrom": ["src/**/*.js", "!src/**/*.test.js"]
 	},
 	"standard": {
-		"env": ["jest"]
+		"env": ["jest"],
+		"ignore": [
+			"dist/**",
+			"node_modules/**",
+			"coverage/**"
+		]
 	}
 }

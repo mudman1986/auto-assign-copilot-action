@@ -1,0 +1,10 @@
+---
+# Super-Linter Configuration
+# https://github.com/super-linter/super-linter
+
+# Exclude patterns (exclude dist directory from linting)
+FILTER_REGEX_EXCLUDE: .*dist/.*
+
+# JavaScript Standard Style
+# Standard config is in .standardrc.json at project root
+# (Standard doesn't support custom config paths)
