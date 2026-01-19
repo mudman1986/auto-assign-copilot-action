@@ -195,6 +195,14 @@ This uses `@vercel/ncc` to compile the action into a single `dist/index.js` file
 npm test
 ```
 
+### Releases
+
+This project uses automated releases with semantic versioning. See [RELEASE.md](/RELEASE.md) for details on:
+- How versioning works
+- Writing commit messages for proper version bumping
+- The automated release process
+- Publishing to GitHub Marketplace
+
 ## License
 
 MIT

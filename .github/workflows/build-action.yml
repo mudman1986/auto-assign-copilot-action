@@ -7,14 +7,19 @@ on:
 
 jobs:
   build:
-    name: Build Action
+    name: Build and Release
     runs-on: ubuntu-latest
     permissions:
       contents: write
+      issues: write
+      pull-requests: write
+      id-token: write
 
     steps:
       - name: Checkout code
         uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
 
       - name: Setup Node.js
         uses: actions/setup-node@v6
@@ -54,3 +59,22 @@ jobs:
           echo "::error::Uncommitted changes in dist/ directory on main branch. Please run 'npm run build' and commit the changes."
           git diff dist/
           exit 1
+
+      - name: Semantic Release
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: npx semantic-release
+
+      - name: Get latest release
+        if: github.event_name == 'workflow_dispatch' && github.event.inputs.publish-marketplace == 'true' && github.ref == 'refs/heads/main'
+        id: get-release
+        run: |
+          LATEST_TAG=$(git describe --tags --abbrev=0 2>/dev/null || echo "")
+          if [ -n "$LATEST_TAG" ]; then
+            echo "tag=$LATEST_TAG" >> $GITHUB_OUTPUT
+            echo "Found latest tag: $LATEST_TAG"
+          else
+            echo "::error::No release tags found. Please create a release first."
+            exit 1
+          fi

@@ -1,0 +1,92 @@
+name: PR Validation
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened, edited]
+  workflow_dispatch:
+
+jobs:
+  validate-pr:
+    name: Validate Pull Request
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: read
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Validate PR title for conventional commits
+        if: github.event_name == 'pull_request'
+        run: |
+          echo "Validating PR title for conventional commit format..."
+          echo "Note: Since PRs are squashed, the PR title becomes the commit message on main"
+          echo ""
+          
+          PR_TITLE="${{ github.event.pull_request.title }}"
+          echo "PR Title: $PR_TITLE"
+          echo ""
+          
+          # Conventional commit pattern
+          PATTERN='^(feat|fix|docs|style|refactor|perf|test|build|ci|chore|revert)(\(.+\))?!?: .+'
+          
+          if echo "$PR_TITLE" | grep -qE "$PATTERN"; then
+            echo "✅ PR title follows conventional commit format"
+          else
+            echo "::error::PR title does not follow conventional commit format"
+            echo ""
+            echo "Conventional commit format: <type>[optional scope]: <description>"
+            echo ""
+            echo "Valid types: feat, fix, docs, style, refactor, perf, test, build, ci, chore, revert"
+            echo ""
+            echo "Examples:"
+            echo "  feat: add new feature"
+            echo "  fix: resolve bug in assignment logic"
+            echo "  docs: update README"
+            echo "  feat(api)!: breaking change to API"
+            echo ""
+            echo "Your PR title: $PR_TITLE"
+            echo ""
+            exit 1
+          fi
+
+      - name: Run release configuration tests
+        run: npm test -- src/release.test.js
+
+      - name: Validate semantic-release config
+        run: |
+          echo "Testing semantic-release configuration..."
+          npx semantic-release --dry-run --no-ci || {
+            echo "::error::Semantic-release configuration is invalid"
+            exit 1
+          }
+          echo "✅ Semantic-release configuration is valid"
+
+      - name: Verify workflow syntax
+        run: |
+          echo "Checking build-action.yml workflow syntax..."
+          if ! grep -q "semantic-release" .github/workflows/build-action.yml; then
+            echo "::error::build-action.yml does not contain semantic-release"
+            exit 1
+          fi
+          echo "✅ Workflow contains semantic-release step"
+
+      - name: Check release documentation
+        run: |
+          if [ ! -f "RELEASE.md" ]; then
+            echo "::error::RELEASE.md documentation not found"
+            exit 1
+          fi
+          echo "✅ Release documentation exists"
