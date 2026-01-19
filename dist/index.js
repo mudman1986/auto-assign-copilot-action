@@ -3053,7 +3053,7 @@ function tryGetExecutablePath(filePath, extensions) {
         }
         catch (err) {
             if (err.code !== 'ENOENT') {
-                 
+                // eslint-disable-next-line no-console
                 console.log(`Unexpected error attempting to determine if executable file exists '${filePath}': ${err}`);
             }
         }
@@ -3081,7 +3081,7 @@ function tryGetExecutablePath(filePath, extensions) {
             }
             catch (err) {
                 if (err.code !== 'ENOENT') {
-                     
+                    // eslint-disable-next-line no-console
                     console.log(`Unexpected error attempting to determine if executable file exists '${filePath}': ${err}`);
                 }
             }
@@ -3099,7 +3099,7 @@ function tryGetExecutablePath(filePath, extensions) {
                         }
                     }
                     catch (err) {
-                         
+                        // eslint-disable-next-line no-console
                         console.log(`Unexpected error attempting to determine the actual case of the file '${filePath}': ${err}`);
                     }
                     return filePath;
@@ -11155,7 +11155,7 @@ async function lazyllhttp () {
 
   return await WebAssembly.instantiate(mod, {
     env: {
-       
+      /* eslint-disable camelcase */
 
       wasm_on_url: (p, at, len) => {
         /* istanbul ignore next */
@@ -11194,7 +11194,7 @@ async function lazyllhttp () {
         return currentParser.onMessageComplete() || 0
       }
 
-       
+      /* eslint-enable camelcase */
     }
   })
 }
@@ -17161,14 +17161,14 @@ class File extends Blob {
     let t = options.type
     let d
 
-     
+    // eslint-disable-next-line no-labels
     substep: {
       if (t) {
         t = parseMIMEType(t)
 
         if (t === 'failure') {
           t = ''
-           
+          // eslint-disable-next-line no-labels
           break substep
         }
 
@@ -22531,7 +22531,7 @@ function determineRequestsReferrer (request) {
       // 3. Return referrerOrigin.
       return referrerOrigin
     }
-    case 'strict-origin':  
+    case 'strict-origin': // eslint-disable-line
       /**
          * 1. If referrerURL is a potentially trustworthy URL and
          * request’s current URL is not a potentially trustworthy URL,
@@ -29051,7 +29051,7 @@ function fireEvent (e, target, eventConstructor = Event, eventInitDict) {
   // 2. Let event be the result of creating an event given eventConstructor,
   //    in the relevant realm of target.
   // 3. Initialize event’s type attribute to e.
-  const event = new eventConstructor(e, eventInitDict)  
+  const event = new eventConstructor(e, eventInitDict) // eslint-disable-line new-cap
 
   // 4. Initialize any other IDL attributes of event as described in the
   //    invocation of this algorithm.
@@ -30451,7 +30451,7 @@ module.exports = async ({
           `[DRY RUN] Would assign refactor issue #${availableRefactorIssue.number} to Copilot (ID: ${copilotBotId})`,
         );
         console.log(`[DRY RUN] Issue URL: ${availableRefactorIssue.url}`);
-        return;
+        return availableRefactorIssue;
       }
 
       console.log(
@@ -30529,7 +30529,13 @@ module.exports = async ({
       console.log(
         `[DRY RUN] Would assign to Copilot bot (ID: ${copilotBotId})`,
       );
-      return;
+      // Return a mock issue for dry-run mode
+      return {
+        id: "dry-run-id",
+        number: 0,
+        title: `Refactor - ${new Date().toISOString()}`,
+        url: "[DRY RUN - would create new refactor issue]",
+      };
     }
 
     const res = await github.graphql(
@@ -30866,7 +30872,7 @@ module.exports = async ({
       );
       console.log(`[DRY RUN] Issue title: ${issueToAssign.title}`);
       console.log(`[DRY RUN] Issue URL: ${issueToAssign.url}`);
-      return;
+      return issueToAssign;
     }
 
     console.log(`Assigning issue #${issueToAssign.number} to Copilot...`);
@@ -31391,7 +31397,7 @@ const StreamSearch = __nccwpck_require__(4136)
 
 const B_DCRLF = Buffer.from('\r\n\r\n')
 const RE_CRLF = /\r\n/g
-const RE_HDR = /^([^:]+):[ \t]?([\x00-\xFF]+)?$/  
+const RE_HDR = /^([^:]+):[ \t]?([\x00-\xFF]+)?$/ // eslint-disable-line no-control-regex
 
 function HeaderParser (cfg) {
   EventEmitter.call(this)
@@ -31453,7 +31459,7 @@ HeaderParser.prototype._parseHeader = function () {
   const len = lines.length
   let m, h
 
-  for (var i = 0; i < len; ++i) {  
+  for (var i = 0; i < len; ++i) { // eslint-disable-line no-var
     if (lines[i].length === 0) { continue }
     if (lines[i][0] === '\t' || lines[i][0] === ' ') {
       // folded header content
@@ -31573,7 +31579,7 @@ function SBMH (needle) {
 
   // Populate occurrence table with analysis of the needle,
   // ignoring last letter.
-  for (var i = 0; i < needleLength - 1; ++i) {  
+  for (var i = 0; i < needleLength - 1; ++i) { // eslint-disable-line no-var
     this._occ[needle[i]] = needleLength - 1 - i
   }
 }
@@ -31731,7 +31737,7 @@ SBMH.prototype._sbmh_lookup_char = function (data, pos) {
 }
 
 SBMH.prototype._sbmh_memcmp = function (data, pos, len) {
-  for (var i = 0; i < len; ++i) {  
+  for (var i = 0; i < len; ++i) { // eslint-disable-line no-var
     if (this._sbmh_lookup_char(data, pos + i) !== this._needle[i]) { return false }
   }
   return true
@@ -32172,7 +32178,7 @@ function UrlEncoded (boy, cfg) {
   this.fieldsLimit = getLimit(limits, 'fields', Infinity)
 
   let charset
-  for (var i = 0, len = parsedConType.length; i < len; ++i) {  
+  for (var i = 0, len = parsedConType.length; i < len; ++i) { // eslint-disable-line no-var
     if (Array.isArray(parsedConType[i]) &&
         RE_CHARSET.test(parsedConType[i][0])) {
       charset = parsedConType[i][1].toLowerCase()
@@ -32417,7 +32423,7 @@ module.exports = Decoder
 
 module.exports = function basename (path) {
   if (typeof path !== 'string') { return '' }
-  for (var i = path.length - 1; i >= 0; --i) {  
+  for (var i = path.length - 1; i >= 0; --i) { // eslint-disable-line no-var
     switch (path.charCodeAt(i)) {
       case 0x2F: // '/'
       case 0x5C: // '\'
@@ -32581,7 +32587,7 @@ module.exports = function getLimit (limits, name, defaultLimit) {
 /***/ ((module, __unused_webpack_exports, __nccwpck_require__) => {
 
 "use strict";
- 
+/* eslint-disable object-property-newline */
 
 
 const decodeText = __nccwpck_require__(2747)
@@ -32707,7 +32713,7 @@ function parseParams (str) {
   let tmp = ''
   const len = str.length
 
-  for (var i = 0; i < len; ++i) {  
+  for (var i = 0; i < len; ++i) { // eslint-disable-line no-var
     const char = str[i]
     if (char === '\\' && inquote) {
       if (escaping) { escaping = false } else {
@@ -32834,74 +32840,74 @@ const executeWorkflow = __nccwpck_require__(5483);
  * Main action execution
  */
 async function run() {
-	try {
-		// Get inputs from action.yml
-		const token = core.getInput("github-token", { required: true });
-		const mode = core.getInput("mode") || "auto";
-		const labelOverride = core.getInput("label-override") || null;
-		const force = core.getInput("force") === "true";
-		const dryRun = core.getInput("dry-run") === "true";
-		const allowParentIssues = core.getInput("allow-parent-issues") === "true";
-		const skipLabelsRaw = core.getInput("skip-labels") || "no-ai,refining";
-		const refactorThresholdRaw = core.getInput("refactor-threshold") || "4";
-		const refactorThreshold = parseInt(refactorThresholdRaw, 10);
+  try {
+    // Get inputs from action.yml
+    const token = core.getInput("github-token", { required: true });
+    const mode = core.getInput("mode") || "auto";
+    const labelOverride = core.getInput("label-override") || null;
+    const force = core.getInput("force") === "true";
+    const dryRun = core.getInput("dry-run") === "true";
+    const allowParentIssues = core.getInput("allow-parent-issues") === "true";
+    const skipLabelsRaw = core.getInput("skip-labels") || "no-ai,refining";
+    const refactorThresholdRaw = core.getInput("refactor-threshold") || "4";
+    const refactorThreshold = parseInt(refactorThresholdRaw, 10);
 
-		// Parse skip labels from comma-separated string
-		const skipLabels = skipLabelsRaw
-			.split(",")
-			.map((label) => label.trim())
-			.filter((label) => label.length > 0);
+    // Parse skip labels from comma-separated string
+    const skipLabels = skipLabelsRaw
+      .split(",")
+      .map((label) => label.trim())
+      .filter((label) => label.length > 0);
 
-		console.log(
-			`Running auto-assign-copilot action:\n` +
-				`  mode: ${mode}\n` +
-				`  force: ${force}\n` +
-				`  labelOverride: ${labelOverride}\n` +
-				`  dryRun: ${dryRun}\n` +
-				`  allowParentIssues: ${allowParentIssues}\n` +
-				`  refactorThreshold: ${refactorThreshold}\n` +
-				`  skipLabels: ${JSON.stringify(skipLabels)}`,
-		);
+    console.log(
+      `Running auto-assign-copilot action:\n` +
+        `  mode: ${mode}\n` +
+        `  force: ${force}\n` +
+        `  labelOverride: ${labelOverride}\n` +
+        `  dryRun: ${dryRun}\n` +
+        `  allowParentIssues: ${allowParentIssues}\n` +
+        `  refactorThreshold: ${refactorThreshold}\n` +
+        `  skipLabels: ${JSON.stringify(skipLabels)}`,
+    );
 
-		// Create authenticated Octokit client
-		const octokit = github.getOctokit(token);
+    // Create authenticated Octokit client
+    const octokit = github.getOctokit(token);
 
-		// Get the context
-		const context = github.context;
+    // Get the context
+    const context = github.context;
 
-		// Track outputs
-		let assignedIssueNumber = "";
-		let assignedIssueUrl = "";
-		const assignmentMode = mode;
+    // Track outputs
+    let assignedIssueNumber = "";
+    let assignedIssueUrl = "";
+    const assignmentMode = mode;
 
-		// Execute the workflow logic
-		const result = await executeWorkflow({
-			github: octokit,
-			context,
-			mode,
-			labelOverride,
-			force,
-			dryRun,
-			allowParentIssues,
-			skipLabels,
-			refactorThreshold,
-		});
+    // Execute the workflow logic
+    const result = await executeWorkflow({
+      github: octokit,
+      context,
+      mode,
+      labelOverride,
+      force,
+      dryRun,
+      allowParentIssues,
+      skipLabels,
+      refactorThreshold,
+    });
 
-		// Set outputs if assignment was made
-		if (result && result.issue) {
-			assignedIssueNumber = result.issue.number.toString();
-			assignedIssueUrl = result.issue.url;
-		}
+    // Set outputs if assignment was made
+    if (result && result.issue) {
+      assignedIssueNumber = result.issue.number.toString();
+      assignedIssueUrl = result.issue.url;
+    }
 
-		core.setOutput("assigned-issue-number", assignedIssueNumber);
-		core.setOutput("assigned-issue-url", assignedIssueUrl);
-		core.setOutput("assignment-mode", assignmentMode);
+    core.setOutput("assigned-issue-number", assignedIssueNumber);
+    core.setOutput("assigned-issue-url", assignedIssueUrl);
+    core.setOutput("assignment-mode", assignmentMode);
 
-		console.log("✓ Action completed successfully");
-	} catch (error) {
-		core.setFailed(`Action failed: ${error.message}`);
-		console.error(error);
-	}
+    console.log("✓ Action completed successfully");
+  } catch (error) {
+    core.setFailed(`Action failed: ${error.message}`);
+    console.error(error);
+  }
 }
 
 // Run the action

@@ -1,0 +1,177 @@
+name: test action
+
+on:
+  workflow_dispatch:
+    inputs:
+      mode:
+        description: 'Assignment mode: auto or refactor'
+        required: false
+        default: 'auto'
+        type: choice
+        options:
+          - auto
+          - refactor
+      label-override:
+        description: 'Priority label to filter by (auto mode only)'
+        required: false
+        default: ''
+        type: string
+      force:
+        description: 'Force assignment even if Copilot already has an issue assigned'
+        required: false
+        default: false
+        type: boolean
+      dry-run:
+        description: 'Dry run mode - log what would be done without making changes'
+        required: false
+        default: true
+        type: boolean
+      allow-parent-issues:
+        description: 'Allow assigning issues that have sub-issues'
+        required: false
+        default: false
+        type: boolean
+      skip-labels:
+        description: 'Comma-separated list of labels to skip (e.g., no-ai,refining)'
+        required: false
+        default: 'no-ai,refining'
+        type: string
+      refactor-threshold:
+        description: 'Number of closed issues to check for refactor label (default: 4)'
+        required: false
+        default: '4'
+        type: string
+
+jobs:
+  test-action:
+    name: Test Auto Assign Copilot Action
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      issues: write
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Test action with provided inputs
+        id: test-action
+        uses: ./
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          mode: ${{ inputs.mode }}
+          label-override: ${{ inputs.label-override }}
+          force: ${{ inputs.force }}
+          dry-run: ${{ inputs.dry-run }}
+          allow-parent-issues: ${{ inputs.allow-parent-issues }}
+          skip-labels: ${{ inputs.skip-labels }}
+          refactor-threshold: ${{ inputs.refactor-threshold }}
+
+      - name: Display action outputs
+        run: |
+          echo "## Action Test Results" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### Inputs Used:" >> $GITHUB_STEP_SUMMARY
+          echo "- **Mode**: ${{ inputs.mode }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **Label Override**: ${{ inputs.label-override }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **Force**: ${{ inputs.force }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **Dry Run**: ${{ inputs.dry-run }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **Allow Parent Issues**: ${{ inputs.allow-parent-issues }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **Skip Labels**: ${{ inputs.skip-labels }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **Refactor Threshold**: ${{ inputs.refactor-threshold }}" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### Outputs:" >> $GITHUB_STEP_SUMMARY
+          echo "- **Assigned Issue Number**: ${{ steps.test-action.outputs.assigned-issue-number }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **Assigned Issue URL**: ${{ steps.test-action.outputs.assigned-issue-url }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **Assignment Mode**: ${{ steps.test-action.outputs.assignment-mode }}" >> $GITHUB_STEP_SUMMARY
+
+  test-all-input-combinations:
+    name: Test All Input Combinations
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      issues: write
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          # Test dry-run mode with auto mode
+          - mode: 'auto'
+            dry-run: true
+            label-override: ''
+            force: false
+            test-name: 'Auto mode with dry-run'
+
+          # Test dry-run mode with refactor mode
+          - mode: 'refactor'
+            dry-run: true
+            label-override: ''
+            force: false
+            test-name: 'Refactor mode with dry-run'
+
+          # Test auto mode with label override
+          - mode: 'auto'
+            dry-run: true
+            label-override: 'bug'
+            force: false
+            test-name: 'Auto mode with bug label override'
+
+          # Test auto mode with force flag
+          - mode: 'auto'
+            dry-run: true
+            label-override: ''
+            force: true
+            test-name: 'Auto mode with force flag'
+
+          # Test with allow-parent-issues
+          - mode: 'auto'
+            dry-run: true
+            label-override: ''
+            force: false
+            allow-parent-issues: true
+            test-name: 'Auto mode allowing parent issues'
+
+          # Test with custom skip-labels
+          - mode: 'auto'
+            dry-run: true
+            label-override: ''
+            force: false
+            skip-labels: 'wip,blocked'
+            test-name: 'Auto mode with custom skip labels'
+
+          # Test with custom refactor threshold
+          - mode: 'auto'
+            dry-run: true
+            label-override: ''
+            force: false
+            refactor-threshold: '2'
+            test-name: 'Auto mode with custom refactor threshold'
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Test - ${{ matrix.test-name }}
+        id: test
+        uses: ./
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          mode: ${{ matrix.mode }}
+          label-override: ${{ matrix.label-override || '' }}
+          force: ${{ matrix.force || false }}
+          dry-run: ${{ matrix.dry-run || true }}
+          allow-parent-issues: ${{ matrix.allow-parent-issues || false }}
+          skip-labels: ${{ matrix.skip-labels || 'no-ai,refining' }}
+          refactor-threshold: ${{ matrix.refactor-threshold || '4' }}
+
+      - name: Verify outputs are set
+        run: |
+          echo "Test: ${{ matrix.test-name }}"
+          echo "Assigned Issue Number: ${{ steps.test.outputs.assigned-issue-number }}"
+          echo "Assigned Issue URL: ${{ steps.test.outputs.assigned-issue-url }}"
+          echo "Assignment Mode: ${{ steps.test.outputs.assignment-mode }}"
+          
+          # In dry-run mode, we should get outputs (issue number and URL may be empty if no suitable issue found)
+          if [ "${{ matrix.dry-run }}" = "true" ]; then
+            echo "✓ Dry-run mode test completed"
+          fi

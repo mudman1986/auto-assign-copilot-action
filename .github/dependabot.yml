@@ -8,21 +8,6 @@ updates:
     open-pull-requests-limit: 10
     reviewers:
       - "mudman1986"
-    labels:
-      - "dependencies"
-      - "automated"
-
-  # Enable version updates for pip
-  - package-ecosystem: "pip"
-    directory: "/"
-    schedule:
-      interval: "weekly"
-    open-pull-requests-limit: 10
-    reviewers:
-      - "mudman1986"
-    labels:
-      - "dependencies"
-      - "automated"
 
   # Enable version updates for GitHub Actions
   - package-ecosystem: "github-actions"
@@ -32,20 +17,3 @@ updates:
     open-pull-requests-limit: 10
     reviewers:
       - "mudman1986"
-    labels:
-      - "dependencies"
-      - "github-actions"
-      - "automated"
-
-  # Enable version updates for Docker
-  - package-ecosystem: "docker"
-    directory: "/"
-    schedule:
-      interval: "weekly"
-    open-pull-requests-limit: 10
-    reviewers:
-      - "mudman1986"
-    labels:
-      - "dependencies"
-      - "docker"
-      - "automated"
