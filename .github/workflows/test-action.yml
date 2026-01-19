@@ -58,7 +58,7 @@ jobs:
         id: test-action
         uses: ./
         with:
-          github-token: ${{ secrets.GITHUB_TOKEN }}
+          github-token: ${{ secrets.COPILOT_ASSIGN_PAT }}
           mode: ${{ inputs.mode }}
           label-override: ${{ inputs.label-override }}
           force: ${{ inputs.force }}
@@ -155,7 +155,7 @@ jobs:
         id: test
         uses: ./
         with:
-          github-token: ${{ secrets.GITHUB_TOKEN }}
+          github-token: ${{ secrets.COPILOT_ASSIGN_PAT }}
           mode: ${{ matrix.mode }}
           label-override: ${{ matrix.label-override || '' }}
           force: ${{ matrix.force || false }}
