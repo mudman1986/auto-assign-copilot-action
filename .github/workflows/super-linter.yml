@@ -10,10 +10,13 @@ on:
       - main
       - develop
 
+permissions:
+  content: read
+  statuses: write
 jobs:
   lint:
     name: Lint Code Base
     uses: mudman1986/mudman-reusable/.github/workflows/reusable-super-linter.yml@main
     with:
-      validate-all-codebase: false
+      validate-all-codebase: true
       default-branch: main
