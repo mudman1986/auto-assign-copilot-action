@@ -12,6 +12,8 @@ jobs:
   test-release-config:
     name: Test Release Configuration
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
     
     steps:
       - name: Checkout code
