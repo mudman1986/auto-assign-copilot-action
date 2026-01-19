@@ -91,20 +91,11 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           TAG="${{ steps.get-release.outputs.tag }}"
-          echo "Publishing release $TAG to GitHub Marketplace..."
-          
-          # GitHub doesn't provide a direct API to publish to marketplace
-          # This requires manual approval in the GitHub UI
-          # We'll update the release to indicate it's ready for marketplace publishing
+          echo "Verifying release $TAG..."
           
           gh release view "$TAG" --json url --jq '.url' || {
             echo "::error::Release $TAG not found"
             exit 1
           }
           
-          echo "::notice::Release $TAG is ready for marketplace publishing"
-          echo "::notice::To complete marketplace publishing:"
-          echo "::notice::1. Go to https://github.com/${{ github.repository }}/releases/tag/$TAG"
-          echo "::notice::2. Click 'Edit release'"
-          echo "::notice::3. Check 'Publish this Action to the GitHub Marketplace'"
-          echo "::notice::4. Review and complete the marketplace listing"
+          echo "Release $TAG verified and ready for marketplace publishing"

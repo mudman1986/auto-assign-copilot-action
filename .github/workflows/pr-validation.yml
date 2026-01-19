@@ -28,46 +28,24 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
-      - name: Validate conventional commits
+      - name: Validate PR title for conventional commits
         if: github.event_name == 'pull_request'
         run: |
-          echo "Validating commit messages for conventional commits format..."
+          echo "Validating PR title for conventional commit format..."
+          echo "Note: Since PRs are squashed, the PR title becomes the commit message on main"
+          echo ""
           
-          # Get the base and head refs
-          BASE_REF="${{ github.event.pull_request.base.sha }}"
-          HEAD_REF="${{ github.event.pull_request.head.sha }}"
-          
-          # Get all commits in the PR
-          COMMITS=$(git log --format="%H %s" $BASE_REF..$HEAD_REF)
+          PR_TITLE="${{ github.event.pull_request.title }}"
+          echo "PR Title: $PR_TITLE"
+          echo ""
           
           # Conventional commit pattern
-          PATTERN='^[0-9a-f]+ (feat|fix|docs|style|refactor|perf|test|build|ci|chore|revert)(\(.+\))?!?: .+'
+          PATTERN='^(feat|fix|docs|style|refactor|perf|test|build|ci|chore|revert)(\(.+\))?!?: .+'
           
-          INVALID_COMMITS=""
-          VALID_COUNT=0
-          TOTAL_COUNT=0
-          
-          while IFS= read -r commit; do
-            if [ -n "$commit" ]; then
-              TOTAL_COUNT=$((TOTAL_COUNT + 1))
-              if echo "$commit" | grep -qE "$PATTERN"; then
-                VALID_COUNT=$((VALID_COUNT + 1))
-                echo "✓ Valid: $commit"
-              else
-                INVALID_COMMITS="$INVALID_COMMITS\n  - $commit"
-                echo "✗ Invalid: $commit"
-              fi
-            fi
-          done <<< "$COMMITS"
-          
-          if [ $VALID_COUNT -eq $TOTAL_COUNT ]; then
-            echo ""
-            echo "✅ All $TOTAL_COUNT commit(s) follow conventional commit format"
+          if echo "$PR_TITLE" | grep -qE "$PATTERN"; then
+            echo "✅ PR title follows conventional commit format"
           else
-            INVALID_COUNT=$((TOTAL_COUNT - VALID_COUNT))
-            echo ""
-            echo "::error::Found $INVALID_COUNT invalid commit message(s):"
-            echo -e "$INVALID_COMMITS"
+            echo "::error::PR title does not follow conventional commit format"
             echo ""
             echo "Conventional commit format: <type>[optional scope]: <description>"
             echo ""
@@ -78,6 +56,8 @@ jobs:
             echo "  fix: resolve bug in assignment logic"
             echo "  docs: update README"
             echo "  feat(api)!: breaking change to API"
+            echo ""
+            echo "Your PR title: $PR_TITLE"
             echo ""
             exit 1
           fi
