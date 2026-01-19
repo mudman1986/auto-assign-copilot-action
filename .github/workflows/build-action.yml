@@ -3,13 +3,6 @@ name: build action
 on:
   push:
   pull_request:
-  workflow_dispatch:
-    inputs:
-      publish-marketplace:
-        description: 'Publish to GitHub Marketplace (only works on main branch)'
-        required: false
-        type: boolean
-        default: false
 
 jobs:
   build:
@@ -84,18 +77,3 @@ jobs:
             echo "::error::No release tags found. Please create a release first."
             exit 1
           fi
-
-      - name: Publish to GitHub Marketplace
-        if: github.event_name == 'workflow_dispatch' && github.event.inputs.publish-marketplace == 'true' && github.ref == 'refs/heads/main'
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: |
-          TAG="${{ steps.get-release.outputs.tag }}"
-          echo "Verifying release $TAG..."
-          
-          gh release view "$TAG" --json url --jq '.url' || {
-            echo "::error::Release $TAG not found"
-            exit 1
-          }
-          
-          echo "Release $TAG verified and ready for marketplace publishing"
