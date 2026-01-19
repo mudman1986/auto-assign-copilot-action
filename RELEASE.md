@@ -43,15 +43,28 @@ The following commit types are recognized:
 
 ### Release Workflow
 
-The release process runs automatically on every push to the `main` branch:
+The release process works in two stages to comply with branch protection rules:
+
+#### Stage 1: Pull Request (Preparation)
+When you create a PR with commits following conventional commit format:
 
 1. **Build**: The action is built and tested
-2. **Version Calculation**: semantic-release analyzes commits since the last release
-3. **Changelog Generation**: A changelog is automatically generated from commit messages
-4. **Git Tag**: A new git tag is created (e.g., v1.2.3)
-5. **GitHub Release**: A GitHub release is created with the changelog
+2. **Version Analysis**: semantic-release analyzes commits to determine the next version
+3. **Version Update**: package.json is updated with the new version number
+4. **Changelog Placeholder**: A CHANGELOG.md file is created as a placeholder
+5. **Commit to PR**: These changes are automatically committed to the PR branch
 
-**Note**: Due to branch protection rules requiring PRs, the changelog and version updates are NOT committed back to the repository. Instead, they are only reflected in the GitHub releases and tags. This is a common pattern for repositories with strict branch protection.
+This allows reviewers to see the version number and confirms a release will be triggered.
+
+#### Stage 2: Merge to Main (Release)
+When the PR is merged to `main`:
+
+1. **Version Calculation**: semantic-release analyzes all commits since the last release
+2. **Changelog Generation**: A complete changelog is generated from commit messages  
+3. **Git Tag**: A new git tag is created (e.g., v1.2.3)
+4. **GitHub Release**: A GitHub release is created with the full changelog
+
+**Note**: On main, semantic-release does NOT commit files back (respecting branch protection). The version in package.json from the PR is preserved, and the full changelog is only in the GitHub release.
 
 ## Writing Commit Messages
 

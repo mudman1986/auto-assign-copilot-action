@@ -33,6 +33,65 @@ jobs:
       - name: Build action
         run: npm run build
 
+      - name: Generate changelog and version for PR
+        if: github.event_name == 'pull_request'
+        id: generate-changelog
+        run: |
+          echo "Analyzing commits for potential release..."
+          npx semantic-release --dry-run --no-ci > /tmp/release-output.txt 2>&1 || true
+          
+          # Check if a release would be triggered and extract version
+          if grep -q "The next release version is" /tmp/release-output.txt; then
+            VERSION=$(grep -oP "The next release version is \K[0-9]+\.[0-9]+\.[0-9]+" /tmp/release-output.txt || echo "")
+            if [ -n "$VERSION" ]; then
+              echo "version=$VERSION" >> $GITHUB_OUTPUT
+              echo "has_release=true" >> $GITHUB_OUTPUT
+              echo "::notice::Next version would be $VERSION"
+            else
+              echo "has_release=false" >> $GITHUB_OUTPUT
+            fi
+          else
+            echo "has_release=false" >> $GITHUB_OUTPUT
+            echo "::notice::No release would be triggered by current commits"
+          fi
+
+      - name: Update version and changelog for PR
+        if: github.event_name == 'pull_request' && steps.generate-changelog.outputs.has_release == 'true' && steps.generate-changelog.outputs.version != ''
+        run: |
+          VERSION="${{ steps.generate-changelog.outputs.version }}"
+          echo "Updating package.json to version $VERSION..."
+          npm version $VERSION --no-git-tag-version --allow-same-version
+          
+          echo "Creating placeholder changelog..."
+          cat > CHANGELOG.md << 'EOF'
+# Changelog
+
+## [$VERSION] - $(date +%Y-%m-%d)
+
+This changelog will be automatically populated when the release is created on merge to main.
+See the GitHub release for detailed release notes once this PR is merged.
+
+EOF
+          sed -i "s/\$VERSION/$VERSION/g" CHANGELOG.md
+          
+          echo "Changes made:"
+          git diff package.json CHANGELOG.md
+
+      - name: Commit changelog and version to PR
+        if: github.event_name == 'pull_request' && steps.generate-changelog.outputs.has_release == 'true' && steps.generate-changelog.outputs.version != ''
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          
+          # Check if there are actual changes
+          if [ -n "$(git status --porcelain package.json package-lock.json CHANGELOG.md 2>/dev/null)" ]; then
+            git add package.json package-lock.json CHANGELOG.md 2>/dev/null || true
+            git commit -m "chore: update changelog and version to ${{ steps.generate-changelog.outputs.version }} [skip ci]" || true
+            git push || echo "::warning::Failed to push changelog updates to PR"
+          else
+            echo "No changes to commit"
+          fi
+
       - name: Check for uncommitted changes
         id: check-changes
         run: |
