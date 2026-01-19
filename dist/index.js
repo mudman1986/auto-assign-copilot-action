@@ -30224,27 +30224,27 @@ function wrappy (fn, cb) {
  * @param {Array<string>} [skipLabels=[]] - Array of label names to skip (default: empty array)
  * @returns {Object} - {shouldSkip: boolean, reason: string}
  */
-function shouldSkipIssue(issue, allowParentIssues = false, skipLabels = []) {
+function shouldSkipIssue (issue, allowParentIssues = false, skipLabels = []) {
   if (issue.isAssigned) {
-    return { shouldSkip: true, reason: "already assigned" };
+    return { shouldSkip: true, reason: 'already assigned' }
   }
   if (issue.hasSubIssues && !allowParentIssues) {
-    return { shouldSkip: true, reason: "has sub-issues" };
+    return { shouldSkip: true, reason: 'has sub-issues' }
   }
   // Check if issue has any of the skip labels
   if (skipLabels.length > 0 && issue.labels) {
-    const issueLabels = issue.labels.map((l) => l.name);
+    const issueLabels = issue.labels.map((l) => l.name)
     const matchedLabel = skipLabels.find((skipLabel) =>
-      issueLabels.includes(skipLabel),
-    );
+      issueLabels.includes(skipLabel)
+    )
     if (matchedLabel) {
       return {
         shouldSkip: true,
-        reason: `has skip label: ${matchedLabel}`,
-      };
+        reason: `has skip label: ${matchedLabel}`
+      }
     }
   }
-  return { shouldSkip: false, reason: null };
+  return { shouldSkip: false, reason: null }
 }
 
 /**
@@ -30252,17 +30252,17 @@ function shouldSkipIssue(issue, allowParentIssues = false, skipLabels = []) {
  * @param {Object} issue - Issue with potentially different label structures
  * @returns {Array} - Array of label objects with normalized structure
  */
-function normalizeIssueLabels(issue) {
+function normalizeIssueLabels (issue) {
   // Handle GraphQL structure: { labels: { nodes: [...] } }
   if (issue.labels && issue.labels.nodes) {
-    return issue.labels.nodes;
+    return issue.labels.nodes
   }
   // Handle flattened structure: { labels: [...] }
   if (Array.isArray(issue.labels)) {
-    return issue.labels;
+    return issue.labels
   }
   // No labels
-  return [];
+  return []
 }
 
 /**
@@ -30272,42 +30272,42 @@ function normalizeIssueLabels(issue) {
  * @param {boolean} force - Whether to force assignment even if Copilot has work
  * @returns {Object} - {shouldAssign: boolean, reason: string}
  */
-function shouldAssignNewIssue(assignedIssues, mode, force) {
+function shouldAssignNewIssue (assignedIssues, mode, force) {
   if (assignedIssues.length === 0) {
-    return { shouldAssign: true, reason: "Copilot has no assigned issues" };
+    return { shouldAssign: true, reason: 'Copilot has no assigned issues' }
   }
 
-  if (mode === "refactor") {
+  if (mode === 'refactor') {
     // Check if already working on a refactor issue
     const hasRefactorIssue = assignedIssues.some((issue) => {
-      const labels = normalizeIssueLabels(issue);
-      return labels.some((label) => label.name === "refactor");
-    });
+      const labels = normalizeIssueLabels(issue)
+      return labels.some((label) => label.name === 'refactor')
+    })
     if (hasRefactorIssue) {
       return {
         shouldAssign: false,
-        reason: "Copilot already has a refactor issue assigned",
-      };
+        reason: 'Copilot already has a refactor issue assigned'
+      }
     }
     // If working on non-refactor issues, skip to avoid disruption
     return {
       shouldAssign: false,
-      reason: "Copilot is working on other issues, skipping refactor creation",
-    };
+      reason: 'Copilot is working on other issues, skipping refactor creation'
+    }
   }
 
   // Auto mode
   if (force) {
     return {
       shouldAssign: true,
-      reason: "Force flag is set",
-    };
+      reason: 'Force flag is set'
+    }
   }
 
   return {
     shouldAssign: false,
-    reason: "Copilot already has assigned issues and force=false",
-  };
+    reason: 'Copilot already has assigned issues and force=false'
+  }
 }
 
 /**
@@ -30315,22 +30315,22 @@ function shouldAssignNewIssue(assignedIssues, mode, force) {
  * @param {Object} issue - Raw issue object from GraphQL
  * @returns {Object} - Parsed issue with boolean flags
  */
-function parseIssueData(issue) {
+function parseIssueData (issue) {
   return {
     id: issue.id,
     number: issue.number,
     title: issue.title,
     url: issue.url,
-    body: issue.body || "",
+    body: issue.body || '',
     isAssigned: issue.assignees.nodes.length > 0,
     // Check for ANY sub-issues (open or closed) - parent issues should not be assigned
     hasSubIssues: !!(issue.trackedIssues && issue.trackedIssues.totalCount > 0),
     isSubIssue: !!(
       issue.trackedInIssues && issue.trackedInIssues.totalCount > 0
     ),
-    isRefactorIssue: issue.labels.nodes.some((l) => l.name === "refactor"),
-    labels: issue.labels.nodes,
-  };
+    isRefactorIssue: issue.labels.nodes.some((l) => l.name === 'refactor'),
+    labels: issue.labels.nodes
+  }
 }
 
 /**
@@ -30340,24 +30340,24 @@ function parseIssueData(issue) {
  * @param {Array<string>} [skipLabels=[]] - Array of label names to skip (default: empty array)
  * @returns {Object|null} - First assignable issue or null
  */
-function findAssignableIssue(
+function findAssignableIssue (
   issues,
   allowParentIssues = false,
-  skipLabels = [],
+  skipLabels = []
 ) {
   for (const issue of issues) {
-    const parsed = parseIssueData(issue);
+    const parsed = parseIssueData(issue)
     const { shouldSkip } = shouldSkipIssue(
       parsed,
       allowParentIssues,
-      skipLabels,
-    );
+      skipLabels
+    )
 
     if (!shouldSkip) {
-      return parsed;
+      return parsed
     }
   }
-  return null;
+  return null
 }
 
 /**
@@ -30366,16 +30366,16 @@ function findAssignableIssue(
  * @param {number} count - Number of recent issues to check (default: 4)
  * @returns {boolean} - True if any of the last N closed issues have refactor label
  */
-function hasRecentRefactorIssue(closedIssues, count = 4) {
+function hasRecentRefactorIssue (closedIssues, count = 4) {
   if (!closedIssues || closedIssues.length === 0) {
-    return false;
+    return false
   }
 
-  const recentIssues = closedIssues.slice(0, count);
+  const recentIssues = closedIssues.slice(0, count)
   return recentIssues.some((issue) => {
-    const labels = normalizeIssueLabels(issue);
-    return labels.some((label) => label.name === "refactor");
-  });
+    const labels = normalizeIssueLabels(issue)
+    return labels.some((label) => label.name === 'refactor')
+  })
 }
 
 /**
@@ -30385,19 +30385,19 @@ function hasRecentRefactorIssue(closedIssues, count = 4) {
  * @param {Array<string>} skipLabels - Array of label names to skip
  * @returns {Object|null} - First available refactor issue or null
  */
-function findAvailableRefactorIssue(
+function findAvailableRefactorIssue (
   issues,
   allowParentIssues = false,
-  skipLabels = [],
+  skipLabels = []
 ) {
   // Filter to only refactor-labeled issues
   const refactorIssues = issues.filter((issue) => {
-    const labels = normalizeIssueLabels(issue);
-    return labels.some((label) => label.name === "refactor");
-  });
+    const labels = normalizeIssueLabels(issue)
+    return labels.some((label) => label.name === 'refactor')
+  })
 
   // Find first assignable refactor issue
-  return findAssignableIssue(refactorIssues, allowParentIssues, skipLabels);
+  return findAssignableIssue(refactorIssues, allowParentIssues, skipLabels)
 }
 
 module.exports = {
@@ -30407,8 +30407,8 @@ module.exports = {
   findAssignableIssue,
   normalizeIssueLabels,
   hasRecentRefactorIssue,
-  findAvailableRefactorIssue,
-};
+  findAvailableRefactorIssue
+}
 
 
 /***/ }),
@@ -30441,50 +30441,50 @@ module.exports = async ({
   dryRun,
   allowParentIssues,
   skipLabels,
-  refactorThreshold,
+  refactorThreshold
 }) => {
-  const helpers = __nccwpck_require__(6636);
+  const helpers = __nccwpck_require__(6636)
 
   // Track assigned issue for return value
-  let assignedIssue = null;
+  let assignedIssue = null
 
   /**
    * Fetch sub-issues for an issue using the REST API
    * @param {number} issueNumber - The issue number to check
    * @returns {Promise<number>} - Total count of sub-issues
    */
-  async function getSubIssuesCount(issueNumber) {
+  async function getSubIssuesCount (issueNumber) {
     try {
       const subIssuesResponse = await github.request(
-        "GET /repos/{owner}/{repo}/issues/{issue_number}/sub_issues",
+        'GET /repos/{owner}/{repo}/issues/{issue_number}/sub_issues',
         {
           owner: context.repo.owner,
           repo: context.repo.repo,
           issue_number: issueNumber,
           per_page: 100,
           headers: {
-            "X-GitHub-Api-Version": "2022-11-28",
-          },
-        },
-      );
-      return subIssuesResponse.data.length;
+            'X-GitHub-Api-Version': '2022-11-28'
+          }
+        }
+      )
+      return subIssuesResponse.data.length
     } catch (error) {
       console.log(
-        `  Warning: Could not check sub-issues for issue #${issueNumber}: ${error.message}`,
-      );
-      return 0;
+        `  Warning: Could not check sub-issues for issue #${issueNumber}: ${error.message}`
+      )
+      return 0
     }
   }
 
   // Step 0: Determine mode based on recent closed issues (for issue close events)
-  let effectiveMode = mode;
-  if (context.eventName === "issues" && mode === "auto") {
+  let effectiveMode = mode
+  if (context.eventName === 'issues' && mode === 'auto') {
     console.log(
-      `Checking last ${refactorThreshold} closed issues to determine if refactor is needed...`,
-    );
+      `Checking last ${refactorThreshold} closed issues to determine if refactor is needed...`
+    )
 
     // Get last N+1 closed issues (including the one just closed)
-    const fetchCount = refactorThreshold + 1;
+    const fetchCount = refactorThreshold + 1
     const closedIssuesResponse = await github.graphql(
       `
         query($owner: String!, $repo: String!, $fetchCount: Int!) {
@@ -30505,37 +30505,37 @@ module.exports = async ({
       {
         owner: context.repo.owner,
         repo: context.repo.repo,
-        fetchCount: fetchCount,
-      },
-    );
+        fetchCount
+      }
+    )
 
-    const closedIssues = closedIssuesResponse.repository.issues.nodes;
-    console.log(`Found ${closedIssues.length} recently closed issues`);
+    const closedIssues = closedIssuesResponse.repository.issues.nodes
+    console.log(`Found ${closedIssues.length} recently closed issues`)
 
     closedIssues.forEach((issue) => {
-      const labels = issue.labels.nodes.map((l) => l.name).join(", ");
-      console.log(`  - #${issue.number}: ${issue.title} (labels: ${labels})`);
-    });
+      const labels = issue.labels.nodes.map((l) => l.name).join(', ')
+      console.log(`  - #${issue.number}: ${issue.title} (labels: ${labels})`)
+    })
 
     // Check if any of the last N closed issues have refactor label
     const hasRefactor = helpers.hasRecentRefactorIssue(
       closedIssues,
-      refactorThreshold,
-    );
+      refactorThreshold
+    )
 
     if (!hasRefactor) {
       console.log(
-        `None of the last ${refactorThreshold} closed issues have refactor label - switching to refactor mode`,
-      );
-      effectiveMode = "refactor";
+        `None of the last ${refactorThreshold} closed issues have refactor label - switching to refactor mode`
+      )
+      effectiveMode = 'refactor'
     } else {
       console.log(
-        `At least one of the last ${refactorThreshold} closed issues has refactor label - staying in auto mode`,
-      );
+        `At least one of the last ${refactorThreshold} closed issues has refactor label - staying in auto mode`
+      )
     }
   }
 
-  console.log(`Effective mode: ${effectiveMode}`);
+  console.log(`Effective mode: ${effectiveMode}`)
 
   // Step 1: Get repo ID, Copilot bot ID
   const repoInfo = await github.graphql(
@@ -30551,29 +30551,29 @@ module.exports = async ({
     `,
     {
       owner: context.repo.owner,
-      repo: context.repo.repo,
-    },
-  );
+      repo: context.repo.repo
+    }
+  )
 
-  const repoId = repoInfo.repository.id;
+  const repoId = repoInfo.repository.id
   const copilotBot = repoInfo.repository.suggestedActors.nodes.find(
-    (n) => n.login === "copilot-swe-agent" && n.__typename === "Bot",
-  );
+    (n) => n.login === 'copilot-swe-agent' && n.__typename === 'Bot'
+  )
   if (!copilotBot) {
-    console.log("Actors found:");
+    console.log('Actors found:')
     repoInfo.repository.suggestedActors.nodes.forEach((n) =>
-      console.log(JSON.stringify(n)),
-    );
-    throw new Error("Copilot bot agent not found in suggestedActors");
+      console.log(JSON.stringify(n))
+    )
+    throw new Error('Copilot bot agent not found in suggestedActors')
   }
-  const copilotBotId = copilotBot.id;
-  const copilotLogin = copilotBot.login;
+  const copilotBotId = copilotBot.id
+  const copilotLogin = copilotBot.login
   console.log(
-    `Found Copilot bot: login="${copilotLogin}", id="${copilotBotId}"`,
-  );
+    `Found Copilot bot: login="${copilotLogin}", id="${copilotBotId}"`
+  )
 
   // Step 2: Check if Copilot is already assigned to an issue
-  console.log(`Querying for all open issues to check assignees...`);
+  console.log('Querying for all open issues to check assignees...')
   const allIssuesResponse = await github.graphql(
     `
       query($owner: String!, $repo: String!) {
@@ -30600,60 +30600,60 @@ module.exports = async ({
     `,
     {
       owner: context.repo.owner,
-      repo: context.repo.repo,
-    },
-  );
+      repo: context.repo.repo
+    }
+  )
 
   // Filter issues to find those assigned to copilot
-  const allIssues = allIssuesResponse.repository.issues.nodes;
-  console.log(`Found ${allIssues.length} total open issues`);
+  const allIssues = allIssuesResponse.repository.issues.nodes
+  console.log(`Found ${allIssues.length} total open issues`)
 
   const currentIssues = allIssues.filter((issue) =>
     issue.assignees.nodes.some(
       (assignee) =>
-        assignee.login === copilotLogin || assignee.id === copilotBotId,
-    ),
-  );
+        assignee.login === copilotLogin || assignee.id === copilotBotId
+    )
+  )
   console.log(
-    `Found ${currentIssues.length} issue(s) assigned to copilot (login="${copilotLogin}", id="${copilotBotId}")`,
-  );
+    `Found ${currentIssues.length} issue(s) assigned to copilot (login="${copilotLogin}", id="${copilotBotId}")`
+  )
 
   if (currentIssues.length > 0) {
-    console.log("Copilot is currently assigned to the following issues:");
+    console.log('Copilot is currently assigned to the following issues:')
     currentIssues.forEach((issue) => {
-      const labels = issue.labels.nodes.map((l) => l.name).join(", ");
-      console.log(`  - #${issue.number}: ${issue.title} (labels: ${labels})`);
-    });
+      const labels = issue.labels.nodes.map((l) => l.name).join(', ')
+      console.log(`  - #${issue.number}: ${issue.title} (labels: ${labels})`)
+    })
 
     const { shouldAssign, reason } = helpers.shouldAssignNewIssue(
       currentIssues,
       effectiveMode,
-      force,
-    );
+      force
+    )
     if (!shouldAssign) {
-      console.log(`Skipping assignment: ${reason}`);
-      return;
+      console.log(`Skipping assignment: ${reason}`)
+      return
     }
-    console.log(`Proceeding with assignment: ${reason}`);
+    console.log(`Proceeding with assignment: ${reason}`)
   }
 
   // Step 3: Handle different modes
-  if (effectiveMode === "refactor") {
-    assignedIssue = await handleRefactorMode();
-  } else if (effectiveMode === "auto") {
-    assignedIssue = await assignNextIssue(labelOverride);
+  if (effectiveMode === 'refactor') {
+    assignedIssue = await handleRefactorMode()
+  } else if (effectiveMode === 'auto') {
+    assignedIssue = await assignNextIssue(labelOverride)
   } else {
-    throw new Error(`Unknown mode: ${effectiveMode}`);
+    throw new Error(`Unknown mode: ${effectiveMode}`)
   }
 
   // Return the assigned issue information
-  return assignedIssue ? { issue: assignedIssue } : null;
+  return assignedIssue ? { issue: assignedIssue } : null
 
   /**
    * Handle refactor mode: assign existing refactor issue or create new one
    */
-  async function handleRefactorMode() {
-    console.log("Refactor mode: checking for available refactor issues...");
+  async function handleRefactorMode () {
+    console.log('Refactor mode: checking for available refactor issues...')
 
     // Get all open issues with detailed info including trackedIssues
     const refactorIssuesResponse = await github.graphql(
@@ -30690,54 +30690,54 @@ module.exports = async ({
       `,
       {
         owner: context.repo.owner,
-        repo: context.repo.repo,
-      },
-    );
+        repo: context.repo.repo
+      }
+    )
 
-    const refactorIssues = refactorIssuesResponse.repository.issues.nodes;
+    const refactorIssues = refactorIssuesResponse.repository.issues.nodes
     console.log(
-      `Found ${refactorIssues.length} open issues with refactor label`,
-    );
+      `Found ${refactorIssues.length} open issues with refactor label`
+    )
 
     if (refactorIssues.length > 0) {
-      console.log("  Refactor issues:");
+      console.log('  Refactor issues:')
       refactorIssues.forEach((issue) => {
         console.log(
-          `    #${issue.number}: ${issue.title} (assigned: ${issue.assignees.nodes.length > 0})`,
-        );
-      });
+          `    #${issue.number}: ${issue.title} (assigned: ${issue.assignees.nodes.length > 0})`
+        )
+      })
     }
 
     // Check for sub-issues via REST API
     for (const issue of refactorIssues) {
-      const totalSubIssues = await getSubIssuesCount(issue.number);
-      issue.trackedIssues = { totalCount: totalSubIssues };
+      const totalSubIssues = await getSubIssuesCount(issue.number)
+      issue.trackedIssues = { totalCount: totalSubIssues }
     }
 
     // Try to find an assignable refactor issue
     const availableRefactorIssue = helpers.findAvailableRefactorIssue(
       refactorIssues,
       allowParentIssues,
-      skipLabels,
-    );
+      skipLabels
+    )
 
     if (availableRefactorIssue) {
       console.log(
-        `Found available refactor issue #${availableRefactorIssue.number}: ${availableRefactorIssue.title}`,
-      );
+        `Found available refactor issue #${availableRefactorIssue.number}: ${availableRefactorIssue.title}`
+      )
 
       // Assign the existing refactor issue to Copilot
       if (dryRun) {
         console.log(
-          `[DRY RUN] Would assign refactor issue #${availableRefactorIssue.number} to Copilot (ID: ${copilotBotId})`,
-        );
-        console.log(`[DRY RUN] Issue URL: ${availableRefactorIssue.url}`);
-        return availableRefactorIssue;
+          `[DRY RUN] Would assign refactor issue #${availableRefactorIssue.number} to Copilot (ID: ${copilotBotId})`
+        )
+        console.log(`[DRY RUN] Issue URL: ${availableRefactorIssue.url}`)
+        return availableRefactorIssue
       }
 
       console.log(
-        `Assigning refactor issue #${availableRefactorIssue.number} to Copilot...`,
-      );
+        `Assigning refactor issue #${availableRefactorIssue.number} to Copilot...`
+      )
 
       await github.graphql(
         `
@@ -30760,26 +30760,26 @@ module.exports = async ({
         `,
         {
           issueId: availableRefactorIssue.id,
-          assigneeIds: [copilotBotId],
-        },
-      );
+          assigneeIds: [copilotBotId]
+        }
+      )
 
       console.log(
-        `✓ Successfully assigned refactor issue #${availableRefactorIssue.number} to Copilot`,
-      );
-      console.log(`  Title: ${availableRefactorIssue.title}`);
-      console.log(`  URL: ${availableRefactorIssue.url}`);
-      return availableRefactorIssue;
+        `✓ Successfully assigned refactor issue #${availableRefactorIssue.number} to Copilot`
+      )
+      console.log(`  Title: ${availableRefactorIssue.title}`)
+      console.log(`  URL: ${availableRefactorIssue.url}`)
+      return availableRefactorIssue
     }
 
-    console.log("No available refactor issues found - creating a new one");
-    return await createRefactorIssue();
+    console.log('No available refactor issues found - creating a new one')
+    return await createRefactorIssue()
   }
 
   /**
    * Create a refactor issue
    */
-  async function createRefactorIssue() {
+  async function createRefactorIssue () {
     // Get refactor label ID
     const labelInfo = await github.graphql(
       `
@@ -30793,30 +30793,30 @@ module.exports = async ({
       `,
       {
         owner: context.repo.owner,
-        repo: context.repo.repo,
-      },
-    );
+        repo: context.repo.repo
+      }
+    )
 
     if (!labelInfo.repository.label) {
-      throw new Error("Refactor label not found in repository.");
+      throw new Error('Refactor label not found in repository.')
     }
-    const refactorLabelId = labelInfo.repository.label.id;
+    const refactorLabelId = labelInfo.repository.label.id
 
     // Create and assign issue to Copilot
     if (dryRun) {
       console.log(
-        `[DRY RUN] Would create refactor issue with title: Refactor - ${new Date().toISOString()}`,
-      );
+        `[DRY RUN] Would create refactor issue with title: Refactor - ${new Date().toISOString()}`
+      )
       console.log(
-        `[DRY RUN] Would assign to Copilot bot (ID: ${copilotBotId})`,
-      );
+        `[DRY RUN] Would assign to Copilot bot (ID: ${copilotBotId})`
+      )
       // Return a mock issue for dry-run mode
       return {
-        id: "dry-run-id",
+        id: 'dry-run-id',
         number: 0,
         title: `Refactor - ${new Date().toISOString()}`,
-        url: "[DRY RUN - would create new refactor issue]",
-      };
+        url: '[DRY RUN - would create new refactor issue]'
+      }
     }
 
     const res = await github.graphql(
@@ -30844,31 +30844,31 @@ module.exports = async ({
         repositoryId: repoId,
         title: `Refactor - ${new Date().toISOString()}`,
         body: [
-          "Review the codebase and make improvements:",
-          "",
-          "- Fix failing tests (superlinter, ci, ui tests)",
-          "- Refactor duplicate code",
-          "- Address security vulnerabilities",
-          "- Improve code maintainability and performance",
-          "- Enhance UI accessibility",
-          "- Increase test coverage",
-          "",
-          "**Rules:**",
-          "- Assign tasks to all available specialized agents in the repository (e.g., UI/UX Specialist, Test Runner, Code Review, etc.)",
-          "- Make minimal surgical changes, run all linters/tests before completing.",
-          "- **If work is too extensive to complete in one session:**",
-          "  - Create GitHub issues with the `refactor` label for remaining work",
-          "  - Each issue should have clear description, acceptance criteria, and code examples",
-          "  - Focus on completing critical fixes first, defer medium-priority items to issues",
-        ].join("\n"),
-        assigneeIds: [copilotBotId],
-      },
-    );
+          'Review the codebase and make improvements:',
+          '',
+          '- Fix failing tests (superlinter, ci, ui tests)',
+          '- Refactor duplicate code',
+          '- Address security vulnerabilities',
+          '- Improve code maintainability and performance',
+          '- Enhance UI accessibility',
+          '- Increase test coverage',
+          '',
+          '**Rules:**',
+          '- Assign tasks to all available specialized agents in the repository (e.g., UI/UX Specialist, Test Runner, Code Review, etc.)',
+          '- Make minimal surgical changes, run all linters/tests before completing.',
+          '- **If work is too extensive to complete in one session:**',
+          '  - Create GitHub issues with the `refactor` label for remaining work',
+          '  - Each issue should have clear description, acceptance criteria, and code examples',
+          '  - Focus on completing critical fixes first, defer medium-priority items to issues'
+        ].join('\n'),
+        assigneeIds: [copilotBotId]
+      }
+    )
 
-    console.log(`Created Copilot-assigned issue: ${res.createIssue.issue.url}`);
+    console.log(`Created Copilot-assigned issue: ${res.createIssue.issue.url}`)
 
     // Add refactor label to the issue
-    const issueId = res.createIssue.issue.id;
+    const issueId = res.createIssue.issue.id
     try {
       await github.graphql(
         `
@@ -30893,16 +30893,16 @@ module.exports = async ({
         `,
         {
           issueId,
-          labelIds: [refactorLabelId],
-        },
-      );
+          labelIds: [refactorLabelId]
+        }
+      )
 
-      console.log(`Added 'refactor' label to issue`);
+      console.log('Added \'refactor\' label to issue')
     } catch (error) {
-      console.error(`Failed to add refactor label: ${error.message}`);
+      console.error(`Failed to add refactor label: ${error.message}`)
       console.error(
-        "Issue was created successfully but label could not be added.",
-      );
+        'Issue was created successfully but label could not be added.'
+      )
       // Don't throw - issue was created successfully
     }
 
@@ -30911,24 +30911,24 @@ module.exports = async ({
       id: res.createIssue.issue.id,
       number: res.createIssue.issue.number,
       title: res.createIssue.issue.title,
-      url: res.createIssue.issue.url,
-    };
+      url: res.createIssue.issue.url
+    }
   }
 
   /**
    * Assign Copilot to the next available issue based on priority
    */
-  async function assignNextIssue(labelOverride) {
+  async function assignNextIssue (labelOverride) {
     // Define label priority
     const labelPriority = labelOverride
       ? [labelOverride]
-      : ["bug", "documentation", "refactor", "enhancement"];
+      : ['bug', 'documentation', 'refactor', 'enhancement']
 
-    let issueToAssign = null;
+    let issueToAssign = null
 
     // Try to find an issue by priority
     for (const label of labelPriority) {
-      console.log(`Searching for issues with label: ${label}`);
+      console.log(`Searching for issues with label: ${label}`)
 
       const issues = await github.graphql(
         `
@@ -30965,29 +30965,29 @@ module.exports = async ({
         {
           owner: context.repo.owner,
           repo: context.repo.repo,
-          label: label,
-        },
-      );
+          label
+        }
+      )
 
       // Log ALL issues with their trackedIssues data for debugging
       console.log(
-        `  Found ${issues.repository.issues.nodes.length} issues with label "${label}":`,
-      );
+        `  Found ${issues.repository.issues.nodes.length} issues with label "${label}":`
+      )
       issues.repository.issues.nodes.forEach((issue) => {
         const trackedCount = issue.trackedIssues
           ? issue.trackedIssues.totalCount
-          : "undefined";
+          : 'undefined'
         const trackedInCount = issue.trackedInIssues
           ? issue.trackedInIssues.totalCount
-          : "undefined";
+          : 'undefined'
         console.log(
-          `    #${issue.number}: "${issue.title}" - trackedIssues: ${trackedCount}, trackedInIssues: ${trackedInCount}, assignees: ${issue.assignees.nodes.length}`,
-        );
-      });
+          `    #${issue.number}: "${issue.title}" - trackedIssues: ${trackedCount}, trackedInIssues: ${trackedInCount}, assignees: ${issue.assignees.nodes.length}`
+        )
+      })
 
       // WORKAROUND: GraphQL trackedIssues returns 0 even when sub-issues exist
       // Solution: Use REST API sub_issues endpoint (note: underscore, not hyphen)
-      console.log(`  Checking for sub-issues via REST API...`);
+      console.log('  Checking for sub-issues via REST API...')
 
       // Check each issue for sub-issues using REST API
       for (const issue of issues.repository.issues.nodes) {
@@ -30995,37 +30995,37 @@ module.exports = async ({
           // Use the REST API sub_issues endpoint: GET /repos/{owner}/{repo}/issues/{issue_number}/sub_issues
           // IMPORTANT: endpoint uses underscore (sub_issues) not hyphen (sub-issues)
           const subIssuesResponse = await github.request(
-            "GET /repos/{owner}/{repo}/issues/{issue_number}/sub_issues",
+            'GET /repos/{owner}/{repo}/issues/{issue_number}/sub_issues',
             {
               owner: context.repo.owner,
               repo: context.repo.repo,
               issue_number: issue.number,
               per_page: 100,
               headers: {
-                "X-GitHub-Api-Version": "2022-11-28",
-              },
-            },
-          );
+                'X-GitHub-Api-Version': '2022-11-28'
+              }
+            }
+          )
 
-          const totalSubIssues = subIssuesResponse.data.length;
+          const totalSubIssues = subIssuesResponse.data.length
           const openSubIssues = subIssuesResponse.data.filter(
-            (subIssue) => subIssue.state === "open",
-          );
+            (subIssue) => subIssue.state === 'open'
+          )
 
           if (totalSubIssues > 0) {
             console.log(
-              `    #${issue.number}: Has ${totalSubIssues} sub-issues (${openSubIssues.length} open, ${totalSubIssues - openSubIssues.length} closed)`,
-            );
-            issue.trackedIssues = { totalCount: totalSubIssues };
+              `    #${issue.number}: Has ${totalSubIssues} sub-issues (${openSubIssues.length} open, ${totalSubIssues - openSubIssues.length} closed)`
+            )
+            issue.trackedIssues = { totalCount: totalSubIssues }
           } else {
-            issue.trackedIssues = { totalCount: 0 };
+            issue.trackedIssues = { totalCount: 0 }
           }
         } catch (error) {
           // API call failed - log warning and treat as no sub-issues
           console.log(
-            `    Warning: Could not check sub-issues for #${issue.number}: ${error.message}`,
-          );
-          issue.trackedIssues = { totalCount: 0 };
+            `    Warning: Could not check sub-issues for #${issue.number}: ${error.message}`
+          )
+          issue.trackedIssues = { totalCount: 0 }
         }
       }
 
@@ -31033,39 +31033,39 @@ module.exports = async ({
       const assignable = helpers.findAssignableIssue(
         issues.repository.issues.nodes,
         allowParentIssues,
-        skipLabels,
-      );
+        skipLabels
+      )
       if (assignable) {
-        issueToAssign = assignable;
+        issueToAssign = assignable
         console.log(
-          `Found issue to assign: ${context.repo.owner}/${context.repo.repo}#${issueToAssign.number}`,
-        );
-        break;
+          `Found issue to assign: ${context.repo.owner}/${context.repo.repo}#${issueToAssign.number}`
+        )
+        break
       }
 
       // Log detailed analysis of why issues were skipped
       issues.repository.issues.nodes.forEach((issue) => {
-        const parsed = helpers.parseIssueData(issue);
+        const parsed = helpers.parseIssueData(issue)
         const { shouldSkip, reason } = helpers.shouldSkipIssue(
           parsed,
           allowParentIssues,
-          skipLabels,
-        );
+          skipLabels
+        )
         console.log(
-          `  Issue ${context.repo.owner}/${context.repo.repo}#${issue.number}: ${issue.title}`,
-        );
+          `  Issue ${context.repo.owner}/${context.repo.repo}#${issue.number}: ${issue.title}`
+        )
         console.log(
-          `    - Assigned: ${parsed.isAssigned}, HasSubIssues: ${parsed.hasSubIssues}, IsSubIssue: ${parsed.isSubIssue}, Refactor: ${parsed.isRefactorIssue}`,
-        );
+          `    - Assigned: ${parsed.isAssigned}, HasSubIssues: ${parsed.hasSubIssues}, IsSubIssue: ${parsed.isSubIssue}, Refactor: ${parsed.isRefactorIssue}`
+        )
         if (shouldSkip) {
-          console.log(`    - Skipped: ${reason}`);
+          console.log(`    - Skipped: ${reason}`)
         }
-      });
+      })
     }
 
     // If no issue with priority labels, try other open issues
     if (!issueToAssign && !labelOverride) {
-      console.log("Searching for any open unassigned issue...");
+      console.log('Searching for any open unassigned issue...')
 
       const allIssues = await github.graphql(
         `
@@ -31101,62 +31101,62 @@ module.exports = async ({
         `,
         {
           owner: context.repo.owner,
-          repo: context.repo.repo,
-        },
-      );
+          repo: context.repo.repo
+        }
+      )
 
       // Filter out priority-labeled issues (already checked)
       const nonPriorityIssues = allIssues.repository.issues.nodes.filter(
         (issue) => {
           const hasPriorityLabel = issue.labels.nodes.some((l) =>
-            labelPriority.includes(l.name),
-          );
-          return !hasPriorityLabel;
-        },
-      );
+            labelPriority.includes(l.name)
+          )
+          return !hasPriorityLabel
+        }
+      )
 
       // Apply the same REST API sub-issue detection
       console.log(
-        `  Checking sub-issues for ${nonPriorityIssues.length} non-priority issues via REST API...`,
-      );
+        `  Checking sub-issues for ${nonPriorityIssues.length} non-priority issues via REST API...`
+      )
       for (const issue of nonPriorityIssues) {
-        const totalSubIssues = await getSubIssuesCount(issue.number);
-        issue.trackedIssues = { totalCount: totalSubIssues };
+        const totalSubIssues = await getSubIssuesCount(issue.number)
+        issue.trackedIssues = { totalCount: totalSubIssues }
       }
 
       issueToAssign = helpers.findAssignableIssue(
         nonPriorityIssues,
         allowParentIssues,
-        skipLabels,
-      );
+        skipLabels
+      )
       if (issueToAssign) {
         console.log(
-          `Found issue to assign: ${context.repo.owner}/${context.repo.repo}#${issueToAssign.number}`,
-        );
+          `Found issue to assign: ${context.repo.owner}/${context.repo.repo}#${issueToAssign.number}`
+        )
       }
     }
 
     if (!issueToAssign) {
-      console.log("No suitable issue found to assign to Copilot.");
+      console.log('No suitable issue found to assign to Copilot.')
       console.log(
-        "Creating or assigning a refactor issue instead to ensure Copilot has work.",
-      );
+        'Creating or assigning a refactor issue instead to ensure Copilot has work.'
+      )
 
       // If no regular issues are available, handle refactor mode
-      return await handleRefactorMode();
+      return await handleRefactorMode()
     }
 
     // Assign the issue to Copilot
     if (dryRun) {
       console.log(
-        `[DRY RUN] Would assign issue #${issueToAssign.number} to Copilot (ID: ${copilotBotId})`,
-      );
-      console.log(`[DRY RUN] Issue title: ${issueToAssign.title}`);
-      console.log(`[DRY RUN] Issue URL: ${issueToAssign.url}`);
-      return issueToAssign;
+        `[DRY RUN] Would assign issue #${issueToAssign.number} to Copilot (ID: ${copilotBotId})`
+      )
+      console.log(`[DRY RUN] Issue title: ${issueToAssign.title}`)
+      console.log(`[DRY RUN] Issue URL: ${issueToAssign.url}`)
+      return issueToAssign
     }
 
-    console.log(`Assigning issue #${issueToAssign.number} to Copilot...`);
+    console.log(`Assigning issue #${issueToAssign.number} to Copilot...`)
 
     await github.graphql(
       `
@@ -31179,18 +31179,18 @@ module.exports = async ({
       `,
       {
         issueId: issueToAssign.id,
-        assigneeIds: [copilotBotId],
-      },
-    );
+        assigneeIds: [copilotBotId]
+      }
+    )
 
     console.log(
-      `✓ Successfully assigned issue #${issueToAssign.number} to Copilot`,
-    );
-    console.log(`  Title: ${issueToAssign.title}`);
-    console.log(`  URL: ${issueToAssign.url}`);
-    return issueToAssign;
+      `✓ Successfully assigned issue #${issueToAssign.number} to Copilot`
+    )
+    console.log(`  Title: ${issueToAssign.title}`)
+    console.log(`  URL: ${issueToAssign.url}`)
+    return issueToAssign
   }
-};
+}
 
 
 /***/ }),
@@ -33113,53 +33113,53 @@ var __webpack_exports__ = {};
  * This file integrates with GitHub Actions using @actions/core and @actions/github
  */
 
-const core = __nccwpck_require__(7484);
-const github = __nccwpck_require__(3228);
-const executeWorkflow = __nccwpck_require__(5483);
+const core = __nccwpck_require__(7484)
+const github = __nccwpck_require__(3228)
+const executeWorkflow = __nccwpck_require__(5483)
 
 /**
  * Main action execution
  */
-async function run() {
+async function run () {
   try {
     // Get inputs from action.yml
-    const token = core.getInput("github-token", { required: true });
-    const mode = core.getInput("mode") || "auto";
-    const labelOverride = core.getInput("label-override") || null;
-    const force = core.getInput("force") === "true";
-    const dryRun = core.getInput("dry-run") === "true";
-    const allowParentIssues = core.getInput("allow-parent-issues") === "true";
-    const skipLabelsRaw = core.getInput("skip-labels") || "no-ai,refining";
-    const refactorThresholdRaw = core.getInput("refactor-threshold") || "4";
-    const refactorThreshold = parseInt(refactorThresholdRaw, 10);
+    const token = core.getInput('github-token', { required: true })
+    const mode = core.getInput('mode') || 'auto'
+    const labelOverride = core.getInput('label-override') || null
+    const force = core.getInput('force') === 'true'
+    const dryRun = core.getInput('dry-run') === 'true'
+    const allowParentIssues = core.getInput('allow-parent-issues') === 'true'
+    const skipLabelsRaw = core.getInput('skip-labels') || 'no-ai,refining'
+    const refactorThresholdRaw = core.getInput('refactor-threshold') || '4'
+    const refactorThreshold = parseInt(refactorThresholdRaw, 10)
 
     // Parse skip labels from comma-separated string
     const skipLabels = skipLabelsRaw
-      .split(",")
+      .split(',')
       .map((label) => label.trim())
-      .filter((label) => label.length > 0);
+      .filter((label) => label.length > 0)
 
     console.log(
-      `Running auto-assign-copilot action:\n` +
+      'Running auto-assign-copilot action:\n' +
         `  mode: ${mode}\n` +
         `  force: ${force}\n` +
         `  labelOverride: ${labelOverride}\n` +
         `  dryRun: ${dryRun}\n` +
         `  allowParentIssues: ${allowParentIssues}\n` +
         `  refactorThreshold: ${refactorThreshold}\n` +
-        `  skipLabels: ${JSON.stringify(skipLabels)}`,
-    );
+        `  skipLabels: ${JSON.stringify(skipLabels)}`
+    )
 
     // Create authenticated Octokit client
-    const octokit = github.getOctokit(token);
+    const octokit = github.getOctokit(token)
 
     // Get the context
-    const context = github.context;
+    const context = github.context
 
     // Track outputs
-    let assignedIssueNumber = "";
-    let assignedIssueUrl = "";
-    const assignmentMode = mode;
+    let assignedIssueNumber = ''
+    let assignedIssueUrl = ''
+    const assignmentMode = mode
 
     // Execute the workflow logic
     const result = await executeWorkflow({
@@ -33171,28 +33171,28 @@ async function run() {
       dryRun,
       allowParentIssues,
       skipLabels,
-      refactorThreshold,
-    });
+      refactorThreshold
+    })
 
     // Set outputs if assignment was made
     if (result && result.issue) {
-      assignedIssueNumber = result.issue.number.toString();
-      assignedIssueUrl = result.issue.url;
+      assignedIssueNumber = result.issue.number.toString()
+      assignedIssueUrl = result.issue.url
     }
 
-    core.setOutput("assigned-issue-number", assignedIssueNumber);
-    core.setOutput("assigned-issue-url", assignedIssueUrl);
-    core.setOutput("assignment-mode", assignmentMode);
+    core.setOutput('assigned-issue-number', assignedIssueNumber)
+    core.setOutput('assigned-issue-url', assignedIssueUrl)
+    core.setOutput('assignment-mode', assignmentMode)
 
-    console.log("✓ Action completed successfully");
+    console.log('✓ Action completed successfully')
   } catch (error) {
-    core.setFailed(`Action failed: ${error.message}`);
-    console.error(error);
+    core.setFailed(`Action failed: ${error.message}`)
+    console.error(error)
   }
 }
 
 // Run the action
-run();
+run()
 
 module.exports = __webpack_exports__;
 /******/ })()
