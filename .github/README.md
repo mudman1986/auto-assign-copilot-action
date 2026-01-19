@@ -1,144 +1,204 @@
-# mudman-template
+# Auto Assign Copilot to Issues
 
-A comprehensive GitHub repository template with automated CI/CD workflows, security scanning, and best practices for modern software development.
+A GitHub Action that automatically assigns GitHub Copilot to issues based on priority labels and configurable rules.
 
-## 🎯 About This Template
+## Features
 
-This template repository provides a complete foundation for new projects with:
-- **Automated dependency updates** via Dependabot
-- **Code quality checks** with Super-Linter
-- **Ready-to-use PR template**
-- **Community health files** (CODE_OF_CONDUCT, SECURITY, CONTRIBUTING)
+- 🎯 **Priority-based assignment**: Assigns issues by priority (bug > documentation > refactor > enhancement)
+- 🔄 **Refactor mode**: Creates or assigns refactor issues to ensure Copilot always has work
+- 🏷️ **Label filtering**: Skip issues with specific labels (e.g., `no-ai`, `refining`)
+- 🌳 **Parent issue handling**: Optionally skip issues with sub-issues
+- 🧪 **Dry run mode**: Preview what would be assigned without making changes
+- ⚡ **Force assignment**: Override existing assignments when needed
+- 📊 **Configurable ratios**: Control refactor issue frequency (default: 1 in 5 closed issues)
 
-## 🚀 Getting Started
+## Usage
 
-### Using This Template
+### Basic Example
 
-1. Click the "**Use this template**" button at the top of this repository
-2. Choose a name for your new repository
-3. Select whether it should be public or private
-4. Click "**Create repository from template**"
+```yaml
+name: Assign Copilot to Issues
 
-### After Creating Your Repository
+on:
+  schedule:
+    - cron: "0 10 * * *" # Daily at 10 AM UTC
+  issues:
+    types: [closed]
+  workflow_dispatch:
 
-Once you've created a new repository from this template, follow these steps to customize it:
+permissions:
+  contents: read
+  issues: write
 
-#### 1. Update Repository Settings
+jobs:
+  assign:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
 
-- [ ] Go to **Settings → General**
-  - Update the repository description
-  - Add relevant topics/tags
-  - Configure default branch name if needed
+      - name: Assign Copilot to issue
+        uses: ./actions/auto-assign-copilot
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+```
 
-- [ ] Go to **Settings → Code security and analysis**
-  - Enable **Dependabot alerts**
-  - Enable **Dependabot security updates**
-  - Enable **Secret scanning**
-  - Enable **Push protection** (recommended)
+### Advanced Example
 
-- [ ] Go to **Settings → Branches**
-  - Add branch protection rules for `main` branch:
-    - Require pull request reviews
-    - Require status checks to pass
-    - Require conversation resolution
+```yaml
+- name: Assign Copilot to issue
+  uses: ./actions/auto-assign-copilot
+  with:
+    github-token: ${{ secrets.COPILOT_ASSIGN_PAT }}
+    mode: auto
+    label-override: "bug" # Only assign bug issues
+    force: false
+    dry-run: false
+    allow-parent-issues: false
+    skip-labels: "no-ai,refining,on-hold"
+    refactor-threshold: 4
+```
 
-#### 2. Customize Configuration Files
+## Inputs
 
-Update the following files with your project-specific information:
+| Input                 | Description                                                          | Required | Default          |
+| --------------------- | -------------------------------------------------------------------- | -------- | ---------------- |
+| `github-token`        | GitHub token with `issues:write` permission                          | Yes      | N/A              |
+| `mode`                | Assignment mode: `auto` or `refactor`                                | No       | `auto`           |
+| `label-override`      | Priority label to filter by (auto mode only)                         | No       | `""`             |
+| `force`               | Force assignment even if Copilot already has an issue                | No       | `false`          |
+| `dry-run`             | Log what would be done without making changes                        | No       | `false`          |
+| `allow-parent-issues` | Allow assigning issues that have sub-issues                          | No       | `false`          |
+| `skip-labels`         | Comma-separated list of labels to skip                               | No       | `no-ai,refining` |
+| `refactor-threshold`  | Number of closed issues to check for refactor label (1 in N+1 ratio) | No       | `4`              |
 
-- [ ] **README.md**: Replace this content with your project documentation
-- [ ] **LICENSE**: Choose an appropriate license for your project
-- [ ] **CONTRIBUTING.md**: Update contribution guidelines
-- [ ] **CODE_OF_CONDUCT.md**: Review and customize if needed
-- [ ] **SECURITY.md**: Update security policy with your contact information
-- [ ] **.github/dependabot.yml**: Adjust package ecosystems based on your tech stack
-- [ ] **.github/workflows/*.yml**: Review and customize workflows as needed
+## Outputs
 
-#### 3. Update Workflow Configurations
+| Output                  | Description                                               |
+| ----------------------- | --------------------------------------------------------- |
+| `assigned-issue-number` | Number of the issue assigned to Copilot (empty if none)   |
+| `assigned-issue-url`    | URL of the issue assigned to Copilot (empty if none)      |
+| `assignment-mode`       | The effective mode used for assignment (auto or refactor) |
 
-The template includes several GitHub Actions workflows located in `.github/workflows/`:
+## Assignment Logic
 
-- **super-linter.yml**: Code quality and linting
-  - Customize `languages` and linting rules in the workflow
-  - Add/remove linters based on your tech stack
+### Auto Mode
 
-#### 4. Add Project-Specific Content
+1. Checks if Copilot already has an assigned issue (skips if true and `force=false`)
+2. Searches for unassigned issues by priority:
+   - bug
+   - documentation
+   - refactor
+   - enhancement
+3. Skips issues that:
+   - Are already assigned
+   - Have sub-issues (unless `allow-parent-issues=true`)
+   - Have labels in `skip-labels` list
+4. If no priority issues found, searches all open issues
+5. If no issues found, creates/assigns a refactor issue
 
-- [ ] Add your application code
-- [ ] Add tests and test configuration
-- [ ] Add build configuration (package.json, requirements.txt, etc.)
-- [ ] Update issue templates for your use case
-- [ ] Add any additional GitHub Actions workflows
-- [ ] Configure repository secrets (Settings → Secrets and variables → Actions)
+### Refactor Mode
 
-#### 5. Clean Up Template Artifacts
+1. Searches for existing unassigned refactor issues
+2. Assigns the first available refactor issue
+3. If none found, creates a new refactor issue and assigns it
 
-- [ ] Remove this "Getting Started" section from README.md
-- [ ] Delete any template files you don't need
-- [ ] Update all TODOs and placeholder text
+### Refactor Ratio
 
-## 📋 Included Workflows
+When an issue is closed, the action checks the last N closed issues (where N = `refactor-threshold`):
 
-This template leverages reusable workflows from [mudman-reusable](https://github.com/mudman1986/mudman-reusable):
+- If none have the `refactor` label, switches to refactor mode
+- This ensures a 1 in N+1 ratio of refactor issues (default: 1 in 5)
 
-### Super-Linter
-Automated code quality and style checking for multiple languages.
-- **Trigger**: Push and pull requests to main/develop branches
-- **Configuration**: `.github/workflows/super-linter.yml`
+## Permissions
 
-### Dependabot
-Automatically creates pull requests to update dependencies.
-- **Schedule**: Weekly updates
-- **Configuration**: `.github/dependabot.yml`
-- **Supports**: npm, pip, GitHub Actions, Docker
+The GitHub token must have the following permissions:
 
-## 🛠️ Customization Options
+```yaml
+permissions:
+  contents: read
+  issues: write
+```
 
-### Adding More Workflows
+For private repositories or advanced features, use a Personal Access Token (PAT) or GitHub App token.
 
-You can add additional workflows from the [mudman-reusable](https://github.com/mudman1986/mudman-reusable) repository:
+## Examples
 
-### Customizing Dependabot
+### Manual Trigger with Options
 
-Edit `.github/dependabot.yml` to:
-- Change update frequency (daily, weekly, monthly)
-- Add/remove package ecosystems
-- Configure reviewers and labels
-- Set version update strategies
+```yaml
+on:
+  workflow_dispatch:
+    inputs:
+      mode:
+        description: "Assignment mode"
+        required: true
+        default: "auto"
+        type: choice
+        options:
+          - auto
+          - refactor
+      dry_run:
+        description: "Dry run mode"
+        required: false
+        type: boolean
+        default: false
 
-### Configuring Branch Protection
+jobs:
+  assign:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
 
-Recommended branch protection rules:
-1. Require pull request reviews (at least 1 approval)
-2. Require status checks:
-   - Super-Linter
-   - CodeQL Analysis
-   - Any project-specific tests
-3. Require conversation resolution
-4. Restrict who can push to matching branches
+      - name: Assign Copilot to issue
+        uses: ./actions/auto-assign-copilot
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          mode: ${{ inputs.mode }}
+          dry-run: ${{ inputs.dry_run }}
+```
 
-## 🤝 Contributing
+### Bug Priority Only
 
-See [CONTRIBUTING.md](..\CONTRIBUTING.md) for details on how to contribute to this project.
+```yaml
+- name: Assign bug to Copilot
+  uses: ./actions/auto-assign-copilot
+  with:
+    github-token: ${{ secrets.GITHUB_TOKEN }}
+    label-override: "bug"
+```
 
-## 📜 License
+### Allow Parent Issues
 
-This project is licensed under the MIT License - see the [LICENSE](..\LICENSE) file for details.
+```yaml
+- name: Assign any issue to Copilot
+  uses: ./actions/auto-assign-copilot
+  with:
+    github-token: ${{ secrets.GITHUB_TOKEN }}
+    allow-parent-issues: true
+```
 
-## 📧 Support
+## Development
 
-For questions or issues:
-1. Check existing Issues
-2. Create a new issue if needed
-3. Refer to the [Security Policy](..\SECURITY.md) for security concerns
+### Build the Action
 
-## 🔗 Related Resources
+```bash
+cd actions/auto-assign-copilot
+npm install
+npm run build
+```
 
-- [mudman-reusable workflows](https://github.com/mudman1986/mudman-reusable) - Reusable GitHub Actions
-- [GitHub Actions Documentation](https://docs.github.com/en/actions)
-- [Dependabot Documentation](https://docs.github.com/en/code-security/dependabot)
-- [CodeQL Documentation](https://codeql.github.com/docs/)
+This uses `@vercel/ncc` to compile the action into a single `dist/index.js` file with all dependencies bundled.
 
----
+### Testing
 
-**Note**: This is a template repository. After creating a new repository from this template, customize it according to your project's needs by following the "Getting Started" section above.
+```bash
+npm test
+```
+
+## License
+
+MIT
+
+## Contributing
+
+Contributions are welcome! Please see [MIGRATION.md](MIGRATION.md) for instructions on transferring this action to another repository.
