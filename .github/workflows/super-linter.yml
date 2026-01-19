@@ -1,0 +1,19 @@
+name: Super-Linter
+
+on:
+  push:
+    branches:
+      - main
+      - develop
+  pull_request:
+    branches:
+      - main
+      - develop
+
+jobs:
+  lint:
+    name: Lint Code Base
+    uses: mudman1986/mudman-reusable/.github/workflows/reusable-super-linter.yml@main
+    with:
+      validate-all-codebase: false
+      default-branch: main
