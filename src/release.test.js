@@ -120,7 +120,8 @@ describe('Release Configuration', () => {
 
       expect(packageJson.devDependencies['semantic-release']).toBeDefined()
       expect(packageJson.devDependencies['@semantic-release/changelog']).toBeDefined()
-      // Note: @semantic-release/git is no longer needed as it's incompatible with branch protection
+      // @semantic-release/git may still be in package.json but is not used in .releaserc.json
+      // This is fine - keeping it doesn't hurt and allows for future flexibility
     })
   })
 })
