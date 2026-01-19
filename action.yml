@@ -1,0 +1,52 @@
+name: "Auto Assign Copilot to Issues"
+description: "Automatically assigns GitHub Copilot to issues based on priority labels and configurable rules"
+author: "mudman1986"
+
+branding:
+  icon: "user-check"
+  color: "blue"
+
+inputs:
+  github-token:
+    description: "GitHub token with permissions to read issues and assign users. Requires issues:write permission."
+    required: true
+  mode:
+    description: "Assignment mode: 'auto' for priority-based assignment or 'refactor' for creating/assigning refactor issues"
+    required: false
+    default: "auto"
+  label-override:
+    description: "Priority label to filter by (auto mode only). Leave empty for default priority order: bug, documentation, refactor, enhancement"
+    required: false
+    default: ""
+  force:
+    description: "Force assignment even if Copilot already has an issue assigned"
+    required: false
+    default: "false"
+  dry-run:
+    description: "Dry run mode - log what would be done without making changes"
+    required: false
+    default: "false"
+  allow-parent-issues:
+    description: "Allow assigning issues that have sub-issues (open or closed)"
+    required: false
+    default: "false"
+  skip-labels:
+    description: "Comma-separated list of labels to skip (e.g., 'no-ai,refining')"
+    required: false
+    default: "no-ai,refining"
+  refactor-threshold:
+    description: "Number of closed issues to check for refactor label. Default: 4 means 1 in 5 ratio (check last 4, create refactor if none found)"
+    required: false
+    default: "4"
+
+outputs:
+  assigned-issue-number:
+    description: "Number of the issue that was assigned to Copilot (empty if no assignment)"
+  assigned-issue-url:
+    description: "URL of the issue that was assigned to Copilot (empty if no assignment)"
+  assignment-mode:
+    description: "The effective mode used for assignment (auto or refactor)"
+
+runs:
+  using: "node20"
+  main: "dist/index.js"
