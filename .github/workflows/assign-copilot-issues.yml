@@ -1,0 +1,91 @@
+on:
+  # Daily schedule to ensure Copilot always has work
+  schedule:
+    - cron: "0 10 * * *" # Daily at 10 AM UTC
+
+  # Trigger when an issue is closed (with delay for grace period)
+  issues:
+    types: [closed]
+
+  # Manual trigger with options
+  workflow_dispatch:
+    inputs:
+      mode:
+        description: "Assignment mode"
+        required: true
+        default: "auto"
+        type: choice
+        options:
+          - auto
+          - refactor
+      label:
+        description: "Priority label (auto mode only, leave empty for default priority)"
+        required: false
+        type: string
+        default: ""
+      force:
+        description: "Force assignment even if copilot has an issue"
+        required: false
+        type: boolean
+        default: false
+      dry_run:
+        description: "Dry run mode - log what would be done without making changes"
+        required: false
+        type: boolean
+        default: false
+      allow_parent_issues:
+        description: "Allow assigning issues that have sub-issues (open or closed)"
+        required: false
+        type: boolean
+        default: false
+      skip_labels:
+        description: "Comma-separated list of labels to skip (e.g., 'no-ai,refining')"
+        required: false
+        type: string
+        default: "no-ai,refining"
+      refactor_threshold:
+        description: "Number of closed issues to check for refactor label (default: 4, means 1 in 5 ratio)"
+        required: false
+        type: number
+        default: 4
+
+permissions:
+  contents: read
+  issues: write
+
+concurrency:
+  group: assign-copilot-issues
+  cancel-in-progress: true
+
+jobs:
+  # Wait job to provide grace period when issue is closed
+  # This job only runs on issue events; it will be skipped for schedule/dispatch events
+  wait-grace-period:
+    runs-on: ubuntu-latest
+    if: github.event_name == 'issues'
+    steps:
+      - name: Wait 5 minutes for manual assignment
+        run: sleep 300
+
+  assign-issue:
+    runs-on: ubuntu-latest
+    needs: [wait-grace-period]
+    # Run after wait job completes (for issue events) or immediately (for schedule/dispatch)
+    # When wait-grace-period is skipped, needs.wait-grace-period.result will be 'skipped'
+    if: |
+      always() && (
+        needs.wait-grace-period.result == 'success' ||
+        needs.wait-grace-period.result == 'skipped'
+      )
+    steps:
+      - name: Assign Copilot to issue
+        uses: mudman1986/auto-assign-copilot-action@main
+        with:
+          github-token: ${{ secrets.COPILOT_ASSIGN_PAT }}
+          mode: ${{ inputs.mode || 'auto' }}
+          label-override: ${{ inputs.label || '' }}
+          force: ${{ inputs.force || 'false' }}
+          dry-run: ${{ inputs.dry_run || 'false' }}
+          allow-parent-issues: ${{ inputs.allow_parent_issues || 'false' }}
+          skip-labels: ${{ inputs.skip_labels || 'no-ai,refining' }}
+          refactor-threshold: ${{ inputs.refactor_threshold || '4' }}

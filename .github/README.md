@@ -39,7 +39,7 @@ jobs:
       - name: Assign Copilot to issue
         uses: ./actions/auto-assign-copilot
         with:
-          github-token: ${{ secrets.GITHUB_TOKEN }}
+          github-token: ${{ secrets.COPILOT_ASSIGN_PAT }}
 ```
 
 ### Advanced Example
@@ -62,7 +62,7 @@ jobs:
 
 | Input                 | Description                                                          | Required | Default          |
 | --------------------- | -------------------------------------------------------------------- | -------- | ---------------- |
-| `github-token`        | GitHub token with `issues:write` permission                          | Yes      | N/A              |
+| `github-token`        | PAT token with `issues:write` permission, from an account with a GitHub Copilot license    | Yes      | N/A              |
 | `mode`                | Assignment mode: `auto` or `refactor`                                | No       | `auto`           |
 | `label-override`      | Priority label to filter by (auto mode only)                         | No       | `""`             |
 | `force`               | Force assignment even if Copilot already has an issue                | No       | `false`          |
@@ -152,7 +152,7 @@ jobs:
       - name: Assign Copilot to issue
         uses: ./actions/auto-assign-copilot
         with:
-          github-token: ${{ secrets.GITHUB_TOKEN }}
+          github-token: ${{ secrets.COPILOT_ASSIGN_PAT }}
           mode: ${{ inputs.mode }}
           dry-run: ${{ inputs.dry_run }}
 ```
@@ -163,7 +163,7 @@ jobs:
 - name: Assign bug to Copilot
   uses: ./actions/auto-assign-copilot
   with:
-    github-token: ${{ secrets.GITHUB_TOKEN }}
+    github-token: ${{ secrets.COPILOT_ASSIGN_PAT }}
     label-override: "bug"
 ```
 
@@ -173,7 +173,7 @@ jobs:
 - name: Assign any issue to Copilot
   uses: ./actions/auto-assign-copilot
   with:
-    github-token: ${{ secrets.GITHUB_TOKEN }}
+    github-token: ${{ secrets.COPILOT_ASSIGN_PAT }}
     allow-parent-issues: true
 ```
 
