@@ -8,6 +8,21 @@ updates:
     open-pull-requests-limit: 10
     reviewers:
       - "mudman1986"
+    groups:
+      # Group all production dependencies together
+      production-dependencies:
+        patterns:
+          - "@actions/*"
+          - "*"
+        update-types:
+          - "minor"
+          - "patch"
+      # Group all development dependencies together
+      development-dependencies:
+        dependency-type: "development"
+        update-types:
+          - "minor"
+          - "patch"
 
   # Enable version updates for GitHub Actions
   - package-ecosystem: "github-actions"
@@ -17,3 +32,11 @@ updates:
     open-pull-requests-limit: 10
     reviewers:
       - "mudman1986"
+    groups:
+      # Group all GitHub Actions updates together
+      github-actions:
+        patterns:
+          - "*"
+        update-types:
+          - "minor"
+          - "patch"
