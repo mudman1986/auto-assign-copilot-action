@@ -1,18 +1,15 @@
-name: Super-Linter
+name: super-linter
 
 on:
   push:
     branches:
       - main
-      - develop
   pull_request:
-    branches:
-      - main
-      - develop
 
 permissions:
-  content: read
+  contents: read
   statuses: write
+
 jobs:
   lint:
     name: Lint Code Base
