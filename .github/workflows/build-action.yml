@@ -40,9 +40,9 @@ jobs:
           echo "Analyzing commits for potential release..."
           npx semantic-release --dry-run --no-ci > /tmp/release-output.txt 2>&1 || true
           
-          # Check if a release would be triggered and extract version
+          # Check if a release would be triggered and extract version using portable grep
           if grep -q "The next release version is" /tmp/release-output.txt; then
-            VERSION=$(grep -oP "The next release version is \K[0-9]+\.[0-9]+\.[0-9]+" /tmp/release-output.txt || echo "")
+            VERSION=$(grep "The next release version is" /tmp/release-output.txt | sed -n 's/.*The next release version is \([0-9][0-9]*\.[0-9][0-9]*\.[0-9][0-9]*\).*/\1/p' | head -1)
             if [ -n "$VERSION" ]; then
               echo "version=$VERSION" >> $GITHUB_OUTPUT
               echo "has_release=true" >> $GITHUB_OUTPUT
@@ -59,20 +59,21 @@ jobs:
         if: github.event_name == 'pull_request' && steps.generate-changelog.outputs.has_release == 'true' && steps.generate-changelog.outputs.version != ''
         run: |
           VERSION="${{ steps.generate-changelog.outputs.version }}"
+          RELEASE_DATE=$(date +%Y-%m-%d)
+          
           echo "Updating package.json to version $VERSION..."
           npm version $VERSION --no-git-tag-version --allow-same-version
           
           echo "Creating placeholder changelog..."
-          cat > CHANGELOG.md << 'EOF'
+          cat > CHANGELOG.md << EOF
 # Changelog
 
-## [$VERSION] - $(date +%Y-%m-%d)
+## [$VERSION] - $RELEASE_DATE
 
 This changelog will be automatically populated when the release is created on merge to main.
 See the GitHub release for detailed release notes once this PR is merged.
 
 EOF
-          sed -i "s/\$VERSION/$VERSION/g" CHANGELOG.md
           
           echo "Changes made:"
           git diff package.json CHANGELOG.md
@@ -85,11 +86,19 @@ EOF
           
           # Check if there are actual changes
           if [ -n "$(git status --porcelain package.json package-lock.json CHANGELOG.md 2>/dev/null)" ]; then
-            git add package.json package-lock.json CHANGELOG.md 2>/dev/null || true
-            git commit -m "chore: update changelog and version to ${{ steps.generate-changelog.outputs.version }} [skip ci]" || true
-            git push || echo "::warning::Failed to push changelog updates to PR"
+            git add package.json package-lock.json CHANGELOG.md 2>/dev/null || git add package.json CHANGELOG.md
+            
+            if git commit -m "chore: prepare release ${{ steps.generate-changelog.outputs.version }} [skip ci]"; then
+              if ! git push; then
+                echo "::error::Failed to push changes to PR branch. Check repository permissions and branch protection settings."
+                exit 1
+              fi
+              echo "::notice::Successfully committed version ${{ steps.generate-changelog.outputs.version }} to PR"
+            else
+              echo "::warning::No changes to commit or commit failed"
+            fi
           else
-            echo "No changes to commit"
+            echo "::notice::No changes detected in package files or changelog"
           fi
 
       - name: Check for uncommitted changes
