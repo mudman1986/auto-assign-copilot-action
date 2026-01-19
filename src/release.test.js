@@ -7,24 +7,25 @@ const fs = require('fs');
 const path = require('path');
 
 describe('Release Configuration', () => {
+  let config;
+  const configPath = path.join(__dirname, '..', '.releaserc.json');
+
+  beforeAll(() => {
+    config = JSON.parse(fs.readFileSync(configPath, 'utf8'));
+  });
+
   describe('semantic-release configuration', () => {
     test('should have .releaserc.json file', () => {
-      const configPath = path.join(__dirname, '..', '.releaserc.json');
       expect(fs.existsSync(configPath)).toBe(true);
     });
 
     test('should have valid semantic-release configuration', () => {
-      const configPath = path.join(__dirname, '..', '.releaserc.json');
-      const config = JSON.parse(fs.readFileSync(configPath, 'utf8'));
-      
       expect(config.branches).toEqual(['main']);
       expect(config.plugins).toBeDefined();
       expect(Array.isArray(config.plugins)).toBe(true);
     });
 
     test('should have commit-analyzer plugin configured', () => {
-      const configPath = path.join(__dirname, '..', '.releaserc.json');
-      const config = JSON.parse(fs.readFileSync(configPath, 'utf8'));
       
       const commitAnalyzer = config.plugins.find(p => 
         Array.isArray(p) && p[0] === '@semantic-release/commit-analyzer'
@@ -36,8 +37,6 @@ describe('Release Configuration', () => {
     });
 
     test('should have release-notes-generator plugin configured', () => {
-      const configPath = path.join(__dirname, '..', '.releaserc.json');
-      const config = JSON.parse(fs.readFileSync(configPath, 'utf8'));
       
       const notesGenerator = config.plugins.find(p => 
         Array.isArray(p) && p[0] === '@semantic-release/release-notes-generator'
@@ -48,8 +47,6 @@ describe('Release Configuration', () => {
     });
 
     test('should have changelog plugin configured', () => {
-      const configPath = path.join(__dirname, '..', '.releaserc.json');
-      const config = JSON.parse(fs.readFileSync(configPath, 'utf8'));
       
       const changelog = config.plugins.find(p => 
         Array.isArray(p) && p[0] === '@semantic-release/changelog'
@@ -60,8 +57,6 @@ describe('Release Configuration', () => {
     });
 
     test('should have npm plugin configured with npmPublish disabled', () => {
-      const configPath = path.join(__dirname, '..', '.releaserc.json');
-      const config = JSON.parse(fs.readFileSync(configPath, 'utf8'));
       
       const npm = config.plugins.find(p => 
         Array.isArray(p) && p[0] === '@semantic-release/npm'
@@ -72,8 +67,6 @@ describe('Release Configuration', () => {
     });
 
     test('should have git plugin configured', () => {
-      const configPath = path.join(__dirname, '..', '.releaserc.json');
-      const config = JSON.parse(fs.readFileSync(configPath, 'utf8'));
       
       const git = config.plugins.find(p => 
         Array.isArray(p) && p[0] === '@semantic-release/git'
@@ -85,17 +78,12 @@ describe('Release Configuration', () => {
     });
 
     test('should have github plugin configured', () => {
-      const configPath = path.join(__dirname, '..', '.releaserc.json');
-      const config = JSON.parse(fs.readFileSync(configPath, 'utf8'));
-      
       expect(config.plugins).toContain('@semantic-release/github');
     });
   });
 
   describe('conventional commits release rules', () => {
     test('should release minor version for feat commits', () => {
-      const configPath = path.join(__dirname, '..', '.releaserc.json');
-      const config = JSON.parse(fs.readFileSync(configPath, 'utf8'));
       
       const commitAnalyzer = config.plugins.find(p => 
         Array.isArray(p) && p[0] === '@semantic-release/commit-analyzer'
@@ -106,8 +94,6 @@ describe('Release Configuration', () => {
     });
 
     test('should release patch version for fix commits', () => {
-      const configPath = path.join(__dirname, '..', '.releaserc.json');
-      const config = JSON.parse(fs.readFileSync(configPath, 'utf8'));
       
       const commitAnalyzer = config.plugins.find(p => 
         Array.isArray(p) && p[0] === '@semantic-release/commit-analyzer'
@@ -118,8 +104,6 @@ describe('Release Configuration', () => {
     });
 
     test('should not release for chore commits', () => {
-      const configPath = path.join(__dirname, '..', '.releaserc.json');
-      const config = JSON.parse(fs.readFileSync(configPath, 'utf8'));
       
       const commitAnalyzer = config.plugins.find(p => 
         Array.isArray(p) && p[0] === '@semantic-release/commit-analyzer'
@@ -130,8 +114,6 @@ describe('Release Configuration', () => {
     });
 
     test('should release patch version for refactor commits', () => {
-      const configPath = path.join(__dirname, '..', '.releaserc.json');
-      const config = JSON.parse(fs.readFileSync(configPath, 'utf8'));
       
       const commitAnalyzer = config.plugins.find(p => 
         Array.isArray(p) && p[0] === '@semantic-release/commit-analyzer'
