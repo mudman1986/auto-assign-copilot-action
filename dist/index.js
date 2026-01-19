@@ -30451,7 +30451,7 @@ module.exports = async ({
           `[DRY RUN] Would assign refactor issue #${availableRefactorIssue.number} to Copilot (ID: ${copilotBotId})`,
         );
         console.log(`[DRY RUN] Issue URL: ${availableRefactorIssue.url}`);
-        return;
+        return availableRefactorIssue;
       }
 
       console.log(
@@ -30529,7 +30529,13 @@ module.exports = async ({
       console.log(
         `[DRY RUN] Would assign to Copilot bot (ID: ${copilotBotId})`,
       );
-      return;
+      // Return a mock issue for dry-run mode
+      return {
+        id: "dry-run-id",
+        number: 0,
+        title: `Refactor - ${new Date().toISOString()}`,
+        url: "[DRY RUN - would create new refactor issue]",
+      };
     }
 
     const res = await github.graphql(
@@ -30866,7 +30872,7 @@ module.exports = async ({
       );
       console.log(`[DRY RUN] Issue title: ${issueToAssign.title}`);
       console.log(`[DRY RUN] Issue URL: ${issueToAssign.url}`);
-      return;
+      return issueToAssign;
     }
 
     console.log(`Assigning issue #${issueToAssign.number} to Copilot...`);
