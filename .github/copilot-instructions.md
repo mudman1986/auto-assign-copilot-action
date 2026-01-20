@@ -70,3 +70,24 @@ Build the action:
 ```bash
 npm run build
 ```
+
+## Code Contribution Guidelines
+
+### Summary and Documentation Files
+
+**Do not add summary files of your work to the codebase.** This includes files like:
+- `CLEANUP_SUMMARY.md`
+- `CHANGES_SUMMARY.md`
+- `WORK_SUMMARY.md`
+- Any other summary/report files documenting changes made
+
+**Exceptions:** Only add documentation files if they contain specific instructions or information that users/developers need for ongoing work. Examples of acceptable documentation:
+- README updates with new features or usage instructions
+- Updated configuration documentation
+- New how-to guides or tutorials
+
+**Rationale:** Summary files are transient and become outdated quickly. All change information should be captured in:
+- Git commit messages
+- Pull request descriptions
+- GitHub release notes
+- Existing documentation files (README.md, CONTRIBUTING.md, etc.)

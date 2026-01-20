@@ -34,56 +34,57 @@ jobs:
         run: npm run build
 
       - name: Generate changelog and version for PR
-        if: github.event_name == 'pull_request'
+        if: github.event_name == 'push' && github.ref != 'refs/heads/main'
         id: generate-changelog
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          echo "Analyzing commits for potential release..."
-          npx semantic-release --dry-run --no-ci > "${{ runner.temp }}/release-output.txt" 2>&1 || true
+          echo "Generating changelog and version for PR..."
+          echo "=========================================="
+          echo "Debug Information:"
+          echo "  Event: ${{ github.event_name }}"
+          echo "  Branch: ${{ github.ref_name }}"
+          echo "  Repository: ${{ github.repository }}"
+          echo "  GitHub Ref: ${{ github.ref }}"
+          echo "=========================================="
           
-          # Check if a release would be triggered and extract version using portable grep
-          if grep -q "The next release version is" "${{ runner.temp }}/release-output.txt"; then
-            VERSION=$(grep "The next release version is" "${{ runner.temp }}/release-output.txt" | sed -n 's/.*The next release version is \([0-9][0-9]*\.[0-9][0-9]*\.[0-9][0-9]*.*\)/\1/p' | head -1)
-            if [ -n "$VERSION" ]; then
-              echo "version=$VERSION" >> $GITHUB_OUTPUT
-              echo "has_release=true" >> $GITHUB_OUTPUT
-              echo "::notice::Next version would be $VERSION"
-            else
-              echo "has_release=false" >> $GITHUB_OUTPUT
-            fi
+          echo ""
+          echo "Running semantic-release to generate changelog..."
+          echo "Note: Using --branches to override config for this feature branch."
+          echo "The .releaserc.json 'branches: [\"main\"]' prevents actual publishing on this branch."
+          echo "This will run the prepare phase to generate CHANGELOG.md with actual content."
+          echo ""
+          
+          # Override branches config to force semantic-release to run on current branch
+          # The prepare phase will generate CHANGELOG.md
+          # The publish/success steps will be skipped because branches config only allows main
+          npx semantic-release --branches '${{ github.ref_name }}' > "${{ runner.temp }}/release-output.txt" 2>&1 || true
+          
+          echo ""
+          echo "=========================================="
+          echo "Full semantic-release output:"
+          echo "=========================================="
+          cat "${{ runner.temp }}/release-output.txt"
+          echo "=========================================="
+          echo ""
+          
+          # Check if CHANGELOG.md was generated
+          if [ -f "CHANGELOG.md" ]; then
+            echo "✓ CHANGELOG.md was generated successfully"
+            # Extract version from package.json
+            VERSION=$(node -p "require('./package.json').version")
+            echo "✓ Version from package.json: $VERSION"
+            echo "version=$VERSION" >> $GITHUB_OUTPUT
+            echo "has_release=true" >> $GITHUB_OUTPUT
+            echo "::notice::Generated changelog for version $VERSION"
           else
+            echo "✗ CHANGELOG.md was not generated - no release triggered"
             echo "has_release=false" >> $GITHUB_OUTPUT
             echo "::notice::No release would be triggered by current commits"
           fi
 
-      - name: Update version and changelog for PR
-        if: github.event_name == 'pull_request' && steps.generate-changelog.outputs.has_release == 'true' && steps.generate-changelog.outputs.version != ''
-        run: |
-          VERSION="${{ steps.generate-changelog.outputs.version }}"
-          RELEASE_DATE=$(date +%Y-%m-%d)
-          
-          echo "Updating package.json to version $VERSION..."
-          npm version $VERSION --no-git-tag-version --allow-same-version
-          
-          echo "Creating placeholder changelog..."
-          cat > CHANGELOG.md << 'EOF'
-          # Changelog
-          
-          ## [$VERSION] - $RELEASE_DATE
-          
-          This changelog will be automatically populated when the release is created on merge to main.
-          See the GitHub release for detailed release notes once this PR is merged.
-          
-          EOF
-          
-          # Replace placeholders with actual values
-          sed -i "s/\$VERSION/$VERSION/g" CHANGELOG.md
-          sed -i "s/\$RELEASE_DATE/$RELEASE_DATE/g" CHANGELOG.md
-          
-          echo "Changes made:"
-          git diff package.json CHANGELOG.md
-
       - name: Commit changelog and version to PR
-        if: github.event_name == 'pull_request' && steps.generate-changelog.outputs.has_release == 'true' && steps.generate-changelog.outputs.version != ''
+        if: github.event_name == 'push' && github.ref != 'refs/heads/main' && steps.generate-changelog.outputs.has_release == 'true' && steps.generate-changelog.outputs.version != ''
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"

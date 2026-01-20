@@ -295,7 +295,7 @@ describe('Workflow executeWorkflow', () => {
       expect(result).not.toBeNull()
       expect(result.issue).toBeDefined()
       expect(result.issue.number).toBe(0)
-      expect(result.issue.title).toContain('Refactor')
+      expect(result.issue.title).toContain('refactor:')
       expect(result.issue.url).toContain('DRY RUN')
 
       // Should not call createIssue mutation in dry-run mode

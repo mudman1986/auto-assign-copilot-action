@@ -45,15 +45,8 @@ function shouldSkipIssue (issue, allowParentIssues = false, skipLabels = []) {
  * @returns {Array} - Array of label objects with normalized structure
  */
 function normalizeIssueLabels (issue) {
-  // Handle GraphQL structure: { labels: { nodes: [...] } }
-  if (issue.labels && issue.labels.nodes) {
-    return issue.labels.nodes
-  }
-  // Handle flattened structure: { labels: [...] }
-  if (Array.isArray(issue.labels)) {
-    return issue.labels
-  }
-  // No labels
+  if (issue.labels?.nodes) return issue.labels.nodes
+  if (Array.isArray(issue.labels)) return issue.labels
   return []
 }
 
@@ -116,10 +109,8 @@ function parseIssueData (issue) {
     body: issue.body || '',
     isAssigned: issue.assignees.nodes.length > 0,
     // Check for ANY sub-issues (open or closed) - parent issues should not be assigned
-    hasSubIssues: !!(issue.trackedIssues && issue.trackedIssues.totalCount > 0),
-    isSubIssue: !!(
-      issue.trackedInIssues && issue.trackedInIssues.totalCount > 0
-    ),
+    hasSubIssues: issue.trackedIssues?.totalCount > 0,
+    isSubIssue: issue.trackedInIssues?.totalCount > 0,
     isRefactorIssue: issue.labels.nodes.some((l) => l.name === 'refactor'),
     labels: issue.labels.nodes
   }
