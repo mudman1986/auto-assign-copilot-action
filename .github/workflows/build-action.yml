@@ -36,6 +36,8 @@ jobs:
       - name: Generate changelog and version for PR
         if: github.event_name == 'push' && github.ref != 'refs/heads/main'
         id: generate-changelog
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           echo "Analyzing commits for potential release..."
           echo "=========================================="
