@@ -1,6 +1,6 @@
 {
 	"name": "auto-assign-copilot-action",
-	"version": "1.0.0",
+	"version": "1.0.1",
 	"description": "GitHub Action to automatically assign Copilot to issues based on priority labels",
 	"main": "dist/index.js",
 	"scripts": {
@@ -30,11 +30,18 @@
 	},
 	"jest": {
 		"testEnvironment": "node",
-		"testMatch": ["**/src/**/*.test.js"],
-		"collectCoverageFrom": ["src/**/*.js", "!src/**/*.test.js"]
+		"testMatch": [
+			"**/src/**/*.test.js"
+		],
+		"collectCoverageFrom": [
+			"src/**/*.js",
+			"!src/**/*.test.js"
+		]
 	},
 	"standard": {
-		"env": ["jest"],
+		"env": [
+			"jest"
+		],
 		"ignore": [
 			"dist/**",
 			"node_modules/**",
