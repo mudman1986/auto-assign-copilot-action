@@ -44,15 +44,14 @@ jobs:
           echo "  Head Ref: ${{ github.head_ref }}"
           echo "  Base Ref: ${{ github.base_ref }}"
           echo "  Repository: ${{ github.repository }}"
+          echo "  GitHub Ref: ${{ github.ref }}"
           echo "=========================================="
           
-          # Use --branches to tell semantic-release to analyze the current branch
-          BRANCH_NAME="${{ github.head_ref }}"
-          echo "Branch name to analyze: $BRANCH_NAME"
-          
           echo ""
-          echo "Running semantic-release with --branches flag..."
-          npx semantic-release --dry-run --no-ci --branches "$BRANCH_NAME" > "${{ runner.temp }}/release-output.txt" 2>&1 || true
+          echo "Running semantic-release with pattern to match PR merge refs..."
+          # For PRs, GitHub uses refs/pull/*/merge as the actual ref
+          # Use a pattern that matches both PR merge refs and the main branch
+          npx semantic-release --dry-run --no-ci --branches '{refs/pull/*/merge,main}' > "${{ runner.temp }}/release-output.txt" 2>&1 || true
           
           echo ""
           echo "=========================================="
