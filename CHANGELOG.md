@@ -1,3 +1,9 @@
+## [1.1.1](https://github.com/mudman1986/auto-assign-copilot-action/compare/v1.1.0...v1.1.1) (2026-01-20)
+
+### Code Refactoring
+
+* remove --no-ci flag since we're already in GitHub Actions CI ([751eba7](https://github.com/mudman1986/auto-assign-copilot-action/commit/751eba7bac9c76c03e1ab0560fc22d91608c9322))
+
 ## [1.1.0](https://github.com/mudman1986/auto-assign-copilot-action/compare/v1.0.0...v1.1.0) (2026-01-20)
 
 ### Features

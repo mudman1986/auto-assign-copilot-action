@@ -1,6 +1,6 @@
 {
 	"name": "auto-assign-copilot-action",
-	"version": "1.1.0",
+	"version": "1.1.1",
 	"description": "GitHub Action to automatically assign Copilot to issues based on priority labels",
 	"main": "dist/index.js",
 	"scripts": {
