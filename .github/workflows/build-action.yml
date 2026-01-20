@@ -48,7 +48,9 @@ jobs:
           
           echo ""
           echo "Running semantic-release in dry-run mode..."
-          npx semantic-release --dry-run --no-ci > "${{ runner.temp }}/release-output.txt" 2>&1 || true
+          # Override branches config to analyze current branch during dry-run
+          # This allows version analysis on feature branches while only releasing on main
+          npx semantic-release --dry-run --no-ci --branches '${{ github.ref_name }}' > "${{ runner.temp }}/release-output.txt" 2>&1 || true
           
           echo ""
           echo "=========================================="
