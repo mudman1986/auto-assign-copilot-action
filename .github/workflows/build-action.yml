@@ -34,24 +34,21 @@ jobs:
         run: npm run build
 
       - name: Generate changelog and version for PR
-        if: github.event_name == 'pull_request'
+        if: github.event_name == 'push' && github.ref != 'refs/heads/main'
         id: generate-changelog
         run: |
           echo "Analyzing commits for potential release..."
           echo "=========================================="
           echo "Debug Information:"
           echo "  Event: ${{ github.event_name }}"
-          echo "  Head Ref: ${{ github.head_ref }}"
-          echo "  Base Ref: ${{ github.base_ref }}"
+          echo "  Branch: ${{ github.ref_name }}"
           echo "  Repository: ${{ github.repository }}"
           echo "  GitHub Ref: ${{ github.ref }}"
           echo "=========================================="
           
           echo ""
-          echo "Running semantic-release with pattern to match PR merge refs..."
-          # For PRs, GitHub uses refs/pull/*/merge as the actual ref
-          # Use a pattern that matches both PR merge refs and the main branch
-          npx semantic-release --dry-run --no-ci --branches '{refs/pull/*/merge,main}' > "${{ runner.temp }}/release-output.txt" 2>&1 || true
+          echo "Running semantic-release in dry-run mode..."
+          npx semantic-release --dry-run --no-ci > "${{ runner.temp }}/release-output.txt" 2>&1 || true
           
           echo ""
           echo "=========================================="
@@ -81,7 +78,7 @@ jobs:
           fi
 
       - name: Update version and changelog for PR
-        if: github.event_name == 'pull_request' && steps.generate-changelog.outputs.has_release == 'true' && steps.generate-changelog.outputs.version != ''
+        if: github.event_name == 'push' && github.ref != 'refs/heads/main' && steps.generate-changelog.outputs.has_release == 'true' && steps.generate-changelog.outputs.version != ''
         run: |
           VERSION="${{ steps.generate-changelog.outputs.version }}"
           RELEASE_DATE=$(date +%Y-%m-%d)
