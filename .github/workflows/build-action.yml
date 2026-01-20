@@ -96,14 +96,18 @@ jobs:
           
           ## [$VERSION] - $RELEASE_DATE
           
-          This changelog will be automatically populated when the release is created on merge to main.
-          See the GitHub release for detailed release notes once this PR is merged.
+          **Note:** This is a placeholder to indicate a release will be triggered.
+          
+          The detailed changelog will be generated automatically and published in the GitHub Release notes when this PR is merged to main. Due to branch protection rules, the changelog is NOT committed back to the main branch - it only exists in the GitHub Release.
+          
+          To view the full changelog after merge, visit: https://github.com/$REPO/releases/tag/v$VERSION
           
           EOF
           
           # Replace placeholders with actual values
           sed -i "s/\$VERSION/$VERSION/g" CHANGELOG.md
           sed -i "s/\$RELEASE_DATE/$RELEASE_DATE/g" CHANGELOG.md
+          sed -i "s|\$REPO|${{ github.repository }}|g" CHANGELOG.md
           
           echo "Changes made:"
           git diff package.json CHANGELOG.md
