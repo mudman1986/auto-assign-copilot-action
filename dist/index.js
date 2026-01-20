@@ -30422,6 +30422,7 @@ module.exports = {
  * @param {boolean} params.allowParentIssues - Allow assigning parent issues
  * @param {Array<string>} params.skipLabels - Labels to skip
  * @param {number} params.refactorThreshold - Number of closed issues to check
+ * @param {boolean} params.createRefactorIssue - Whether to create new refactor issues
  */
 module.exports = async ({
   github,
@@ -30432,7 +30433,8 @@ module.exports = async ({
   dryRun,
   allowParentIssues,
   skipLabels,
-  refactorThreshold
+  refactorThreshold,
+  createRefactorIssue
 }) => {
   const helpers = __nccwpck_require__(6636)
 
@@ -30757,14 +30759,22 @@ module.exports = async ({
       return { issue: availableRefactorIssue }
     }
 
+    // Check if we should create a new refactor issue
+    if (!createRefactorIssue) {
+      console.log(
+        'No available refactor issues found, but create-refactor-issue is disabled. Skipping refactor issue creation.'
+      )
+      return
+    }
+
     console.log('No available refactor issues found - creating a new one')
-    return createRefactorIssue()
+    return createRefactorIssueFunc()
   }
 
   /**
    * Create a refactor issue
    */
-  async function createRefactorIssue () {
+  async function createRefactorIssueFunc () {
     // Get refactor label ID
     const labelInfo = await github.graphql(
       `
@@ -31091,6 +31101,15 @@ module.exports = async ({
 
     if (!issueToAssign) {
       console.log('No suitable issue found to assign to Copilot.')
+
+      // Check if we should create a refactor issue
+      if (!createRefactorIssue) {
+        console.log(
+          'Skipping refactor issue creation (create-refactor-issue is disabled).'
+        )
+        return
+      }
+
       console.log(
         'Creating or assigning a refactor issue instead to ensure Copilot has work.'
       )
@@ -33085,6 +33104,7 @@ async function run () {
     const skipLabelsRaw = core.getInput('skip-labels') || 'no-ai,refining'
     const refactorThresholdRaw = core.getInput('refactor-threshold') || '4'
     const refactorThreshold = parseInt(refactorThresholdRaw, 10)
+    const createRefactorIssue = core.getInput('create-refactor-issue') === 'true'
 
     // Parse skip labels from comma-separated string
     const skipLabels = skipLabelsRaw
@@ -33099,6 +33119,7 @@ async function run () {
   dryRun: ${dryRun}
   allowParentIssues: ${allowParentIssues}
   refactorThreshold: ${refactorThreshold}
+  createRefactorIssue: ${createRefactorIssue}
   skipLabels: ${JSON.stringify(skipLabels)}`)
 
     // Create authenticated Octokit client
@@ -33117,7 +33138,8 @@ async function run () {
       dryRun,
       allowParentIssues,
       skipLabels,
-      refactorThreshold
+      refactorThreshold,
+      createRefactorIssue
     })
 
     // Set outputs

@@ -38,6 +38,10 @@ inputs:
     description: "Number of closed issues to check for refactor label. Default: 4 means 1 in 5 ratio (check last 4, create refactor if none found)"
     required: false
     default: "4"
+  create-refactor-issue:
+    description: "Whether to create new refactor issues when none are available. Default: true (create refactor issues)"
+    required: false
+    default: "true"
 
 outputs:
   assigned-issue-number:
