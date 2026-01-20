@@ -50,16 +50,15 @@ jobs:
           
           echo ""
           echo "Running semantic-release to generate changelog..."
-          echo "Note: Using --no-ci to run locally, --branches to override config."
+          echo "Note: Using --branches to override config for this feature branch."
           echo "The .releaserc.json 'branches: [\"main\"]' prevents actual publishing on this branch."
           echo "This will run the prepare phase to generate CHANGELOG.md with actual content."
           echo ""
           
           # Override branches config to force semantic-release to run on current branch
-          # --no-ci allows running outside CI
           # The prepare phase will generate CHANGELOG.md
           # The publish/success steps will be skipped because branches config only allows main
-          npx semantic-release --no-ci --branches '${{ github.ref_name }}' > "${{ runner.temp }}/release-output.txt" 2>&1 || true
+          npx semantic-release --branches '${{ github.ref_name }}' > "${{ runner.temp }}/release-output.txt" 2>&1 || true
           
           echo ""
           echo "=========================================="
