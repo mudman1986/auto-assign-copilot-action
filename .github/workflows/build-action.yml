@@ -38,7 +38,9 @@ jobs:
         id: generate-changelog
         run: |
           echo "Analyzing commits for potential release..."
-          npx semantic-release --dry-run --no-ci > "${{ runner.temp }}/release-output.txt" 2>&1 || true
+          # Use --branches to tell semantic-release to analyze the current branch
+          BRANCH_NAME="${{ github.head_ref }}"
+          npx semantic-release --dry-run --no-ci --branches "$BRANCH_NAME" > "${{ runner.temp }}/release-output.txt" 2>&1 || true
           
           # Check if a release would be triggered and extract version using portable grep
           if grep -q "The next release version is" "${{ runner.temp }}/release-output.txt"; then
