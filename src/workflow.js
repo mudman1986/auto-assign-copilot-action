@@ -71,13 +71,18 @@ module.exports = async ({
 
   /**
    * Enriches issues with sub-issue counts from REST API
+   * Modifies the issues array in-place by setting issue.trackedIssues.totalCount
    * @param {Array} issues - Array of issue objects
+   * @returns {Promise<void>}
    */
   async function enrichWithSubIssues (issues) {
-    for (const issue of issues) {
-      const totalSubIssues = await getSubIssuesCount(issue.number)
-      issue.trackedIssues = { totalCount: totalSubIssues }
-    }
+    // Use Promise.all for parallel API calls instead of sequential
+    await Promise.all(
+      issues.map(async (issue) => {
+        const totalSubIssues = await getSubIssuesCount(issue.number)
+        issue.trackedIssues = { totalCount: totalSubIssues }
+      })
+    )
   }
 
   // Step 0: Determine mode based on recent closed issues (for issue close events)
