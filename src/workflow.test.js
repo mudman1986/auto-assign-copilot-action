@@ -784,4 +784,139 @@ describe('Workflow executeWorkflow', () => {
       expect(assignCalls.length).toBeGreaterThan(0)
     })
   })
+
+  describe('wait functionality', () => {
+    test('should wait when event is issues and waitSeconds is set', async () => {
+      const mockGithub = createMockGithub({
+        graphql: async (query, variables) => {
+          // Mock the closed issues query for issue events
+          if (query.includes('states: CLOSED')) {
+            return {
+              repository: {
+                issues: {
+                  nodes: [
+                    {
+                      number: 1,
+                      title: 'Recently closed issue',
+                      closedAt: new Date().toISOString(),
+                      labels: {
+                        nodes: [{ name: 'refactor' }]
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          }
+          return {}
+        }
+      })
+      const mockContext = {
+        repo: {
+          owner: 'test-owner',
+          repo: 'test-repo'
+        },
+        eventName: 'issues'
+      }
+
+      const startTime = Date.now()
+      await executeWorkflow({
+        github: mockGithub,
+        context: mockContext,
+        mode: 'auto',
+        labelOverride: null,
+        force: false,
+        dryRun: true,
+        allowParentIssues: false,
+        skipLabels: ['no-ai'],
+        refactorThreshold: 4,
+        createRefactorIssue: true,
+        refactorIssueTemplate: '.github/REFACTOR_ISSUE_TEMPLATE.md',
+        waitSeconds: 2
+      })
+      const elapsedTime = Date.now() - startTime
+
+      // Should have waited at least 2 seconds (2000ms)
+      expect(elapsedTime).toBeGreaterThanOrEqual(2000)
+    })
+
+    test('should not wait when event is not issues', async () => {
+      const mockGithub = createMockGithub()
+      const mockContext = createMockContext() // workflow_dispatch
+
+      const startTime = Date.now()
+      await executeWorkflow({
+        github: mockGithub,
+        context: mockContext,
+        mode: 'auto',
+        labelOverride: null,
+        force: false,
+        dryRun: true,
+        allowParentIssues: false,
+        skipLabels: ['no-ai'],
+        refactorThreshold: 4,
+        createRefactorIssue: true,
+        refactorIssueTemplate: '.github/REFACTOR_ISSUE_TEMPLATE.md',
+        waitSeconds: 2
+      })
+      const elapsedTime = Date.now() - startTime
+
+      // Should not have waited
+      expect(elapsedTime).toBeLessThan(1000)
+    })
+
+    test('should not wait when waitSeconds is 0', async () => {
+      const mockGithub = createMockGithub({
+        graphql: async (query, variables) => {
+          // Mock the closed issues query for issue events
+          if (query.includes('states: CLOSED')) {
+            return {
+              repository: {
+                issues: {
+                  nodes: [
+                    {
+                      number: 1,
+                      title: 'Recently closed issue',
+                      closedAt: new Date().toISOString(),
+                      labels: {
+                        nodes: [{ name: 'refactor' }]
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          }
+          return {}
+        }
+      })
+      const mockContext = {
+        repo: {
+          owner: 'test-owner',
+          repo: 'test-repo'
+        },
+        eventName: 'issues'
+      }
+
+      const startTime = Date.now()
+      await executeWorkflow({
+        github: mockGithub,
+        context: mockContext,
+        mode: 'auto',
+        labelOverride: null,
+        force: false,
+        dryRun: true,
+        allowParentIssues: false,
+        skipLabels: ['no-ai'],
+        refactorThreshold: 4,
+        createRefactorIssue: true,
+        refactorIssueTemplate: '.github/REFACTOR_ISSUE_TEMPLATE.md',
+        waitSeconds: 0
+      })
+      const elapsedTime = Date.now() - startTime
+
+      // Should not have waited
+      expect(elapsedTime).toBeLessThan(1000)
+    })
+  })
 })

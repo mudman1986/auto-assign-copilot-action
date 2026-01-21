@@ -58,25 +58,8 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  # Wait job to provide grace period when issue is closed
-  # This job only runs on issue events; it will be skipped for schedule/dispatch events
-  wait-grace-period:
-    runs-on: ubuntu-latest
-    if: github.event_name == 'issues'
-    steps:
-      - name: Wait 5 minutes for manual assignment
-        run: sleep 300
-
   assign-issue:
     runs-on: ubuntu-latest
-    needs: [wait-grace-period]
-    # Run after wait job completes (for issue events) or immediately (for schedule/dispatch)
-    # When wait-grace-period is skipped, needs.wait-grace-period.result will be 'skipped'
-    if: |
-      always() && (
-        needs.wait-grace-period.result == 'success' ||
-        needs.wait-grace-period.result == 'skipped'
-      )
     steps:
       - name: Assign Copilot to issue
         uses: mudman1986/auto-assign-copilot-action@v1.1.0
@@ -89,3 +72,4 @@ jobs:
           allow-parent-issues: ${{ inputs.allow_parent_issues || 'false' }}
           skip-labels: ${{ inputs.skip_labels || 'no-ai,refining' }}
           refactor-threshold: ${{ inputs.refactor_threshold || '4' }}
+          wait-seconds: '300' # 5 minutes grace period for issue events

@@ -23,7 +23,7 @@
 ### Intelligent Assignment
 - **Priority-based routing**: bug → documentation → refactor → enhancement
 - **Adaptive fallback**: Autonomous selection from available issues
-- **Grace period**: 5-minute wait after issue closure for human intervention
+- **Grace period**: Configurable wait time for manual assignment (default: 5 minutes for issue events)
 
 </td>
 <td width="33%" valign="top">
@@ -85,28 +85,15 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  # Wait job to provide grace period when issue is closed
-  wait-grace-period:
-    runs-on: ubuntu-latest
-    if: github.event_name == 'issues'
-    steps:
-      - name: Wait 5 minutes for manual assignment
-        run: sleep 300
-
   assign-issue:
     runs-on: ubuntu-latest
-    needs: [wait-grace-period]
-    if: |
-      always() && (
-        needs.wait-grace-period.result == 'success' ||
-        needs.wait-grace-period.result == 'skipped'
-      )
     steps:
       - name: Assign Copilot to issue
         uses: mudman1986/auto-assign-copilot-action@v1.1.0
         with:
           github-token: ${{ secrets.COPILOT_ASSIGN_PAT }}
           mode: ${{ inputs.mode || 'auto' }}
+          wait-seconds: '300'  # 5 minutes grace period for issue events
 ```
 
 ### 2. Set Up Authentication
@@ -143,6 +130,7 @@ The action will autonomously assign issues to Copilot based on intelligent prior
 | `refactor-threshold` | Closed issues to check for refactor (N in 1:N+1 ratio) | No | `4` |
 | `create-refactor-issue` | Whether to create new refactor issues | No | `true` |
 | `refactor-issue-template` | Path to custom refactor issue template | No | `.github/REFACTOR_ISSUE_TEMPLATE.md` |
+| `wait-seconds` | Grace period in seconds before assignment for issue events (schedule/dispatch triggers proceed immediately) | No | `300` |
 
 ### Outputs
 
@@ -155,6 +143,15 @@ The action will autonomously assign issues to Copilot based on intelligent prior
 ---
 
 ## How It Works
+
+### Grace Period (Wait Seconds)
+
+The `wait-seconds` parameter provides intelligent grace period handling:
+
+- **Issue events** (e.g., issue closed): Waits for the specified number of seconds before assignment, allowing time for manual intervention
+- **Schedule/Dispatch events**: Proceeds immediately without waiting, as these are intentional triggers
+
+This built-in grace period eliminates the need for separate wait jobs in your workflow, making it more elegant and maintainable.
 
 ### Auto Mode (Default) - Intelligent Agent Orchestration
 
@@ -232,6 +229,18 @@ After closing an issue, the system analyzes the last **N** closed issues (N = `r
     github-token: ${{ secrets.COPILOT_ASSIGN_PAT }}
     skip-labels: "no-ai,needs-review,on-hold"
     allow-parent-issues: true
+
+# Custom grace period (10 minutes)
+- uses: mudman1986/auto-assign-copilot-action@v1.1.0
+  with:
+    github-token: ${{ secrets.COPILOT_ASSIGN_PAT }}
+    wait-seconds: '600'  # 10 minutes wait for issue events
+
+# No grace period (immediate assignment)
+- uses: mudman1986/auto-assign-copilot-action@v1.1.0
+  with:
+    github-token: ${{ secrets.COPILOT_ASSIGN_PAT }}
+    wait-seconds: '0'  # Assign immediately even for issue events
 
 # Custom refactor template
 - uses: mudman1986/auto-assign-copilot-action@v1.1.0

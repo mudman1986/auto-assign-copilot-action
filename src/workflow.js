@@ -16,6 +16,7 @@
  * @param {number} params.refactorThreshold - Number of closed issues to check
  * @param {boolean} params.createRefactorIssue - Whether to create new refactor issues
  * @param {string} params.refactorIssueTemplate - Path to the refactor issue template file
+ * @param {number} params.waitSeconds - Number of seconds to wait for issue events
  */
 module.exports = async ({
   github,
@@ -28,9 +29,19 @@ module.exports = async ({
   skipLabels,
   refactorThreshold,
   createRefactorIssue,
-  refactorIssueTemplate
+  refactorIssueTemplate,
+  waitSeconds
 }) => {
   const helpers = require('./helpers.js')
+
+  // Wait for grace period if this is an issue event and wait-seconds is configured
+  if (context.eventName === 'issues' && waitSeconds > 0) {
+    console.log(
+      `Issue event detected. Waiting ${waitSeconds} seconds for grace period before proceeding...`
+    )
+    await new Promise((resolve) => setTimeout(resolve, waitSeconds * 1000))
+    console.log('Grace period complete. Proceeding with assignment.')
+  }
 
   /**
    * Fetch sub-issues for an issue using the REST API
