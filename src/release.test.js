@@ -44,13 +44,12 @@ describe('Release Configuration', () => {
       expect(notesGenerator[1].preset).toBe('conventionalcommits')
     })
 
-    test('should have changelog plugin configured', () => {
+    test('should NOT have changelog plugin configured (not committed to repo)', () => {
       const changelog = config.plugins.find(p =>
         Array.isArray(p) && p[0] === '@semantic-release/changelog'
       )
 
-      expect(changelog).toBeDefined()
-      expect(changelog[1].changelogFile).toBe('CHANGELOG.md')
+      expect(changelog).toBeUndefined()
     })
 
     test('should have npm plugin configured with npmPublish disabled', () => {
@@ -119,9 +118,8 @@ describe('Release Configuration', () => {
       const packageJson = JSON.parse(fs.readFileSync(packagePath, 'utf8'))
 
       expect(packageJson.devDependencies['semantic-release']).toBeDefined()
-      expect(packageJson.devDependencies['@semantic-release/changelog']).toBeDefined()
-      // @semantic-release/git may still be in package.json but is not used in .releaserc.json
-      // This is fine - keeping it doesn't hurt and allows for future flexibility
+      // @semantic-release/changelog and @semantic-release/git may still be in package.json
+      // but are not used in .releaserc.json per semantic-release best practices
     })
   })
 })
