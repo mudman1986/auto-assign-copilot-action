@@ -30424,6 +30424,15 @@ function readRefactorIssueTemplate (templatePath) {
     const workspaceRoot = process.env.GITHUB_WORKSPACE || process.cwd()
     const absolutePath = path.resolve(workspaceRoot, templatePath)
 
+    // Validate that the resolved path is within the workspace to prevent directory traversal
+    const normalizedWorkspace = path.resolve(workspaceRoot)
+    const normalizedPath = path.resolve(absolutePath)
+    if (!normalizedPath.startsWith(normalizedWorkspace + path.sep) &&
+        normalizedPath !== normalizedWorkspace) {
+      console.log(`Template path ${templatePath} is outside workspace, using default content`)
+      return defaultContent
+    }
+
     // Check if file exists
     if (!fs.existsSync(absolutePath)) {
       console.log(`Template file not found at ${absolutePath}, using default content`)

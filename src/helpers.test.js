@@ -262,24 +262,22 @@ describe('Auto Assign Copilot Helpers', () => {
     const fs = require('fs')
     const path = require('path')
 
-    // Save original process.env and fs methods
+    // Save original process.env
     const originalEnv = process.env.GITHUB_WORKSPACE
-    const originalExistsSync = fs.existsSync
-    const originalReadFileSync = fs.readFileSync
 
     afterEach(() => {
-      // Restore original methods
+      // Restore original environment
       process.env.GITHUB_WORKSPACE = originalEnv
-      fs.existsSync = originalExistsSync
-      fs.readFileSync = originalReadFileSync
+      // Jest automatically restores spies
+      jest.restoreAllMocks()
     })
 
     test('should read template file when it exists', () => {
       const mockContent = 'Custom template content\n\nWith multiple lines'
 
-      // Mock file system methods
-      fs.existsSync = jest.fn(() => true)
-      fs.readFileSync = jest.fn(() => mockContent)
+      // Mock file system methods using jest.spyOn
+      jest.spyOn(fs, 'existsSync').mockReturnValue(true)
+      jest.spyOn(fs, 'readFileSync').mockReturnValue(mockContent)
 
       const result = helpers.readRefactorIssueTemplate('.github/REFACTOR_ISSUE_TEMPLATE.md')
       expect(result).toBe(mockContent)
@@ -288,8 +286,8 @@ describe('Auto Assign Copilot Helpers', () => {
     })
 
     test('should return default content when template file does not exist', () => {
-      // Mock file system methods
-      fs.existsSync = jest.fn(() => false)
+      // Mock file system methods using jest.spyOn
+      jest.spyOn(fs, 'existsSync').mockReturnValue(false)
 
       const result = helpers.readRefactorIssueTemplate('.github/REFACTOR_ISSUE_TEMPLATE.md')
       expect(result).toContain('Review the codebase and make improvements')
@@ -298,9 +296,9 @@ describe('Auto Assign Copilot Helpers', () => {
     })
 
     test('should return default content when reading template fails', () => {
-      // Mock file system methods to throw error
-      fs.existsSync = jest.fn(() => true)
-      fs.readFileSync = jest.fn(() => {
+      // Mock file system methods to throw error using jest.spyOn
+      jest.spyOn(fs, 'existsSync').mockReturnValue(true)
+      jest.spyOn(fs, 'readFileSync').mockImplementation(() => {
         throw new Error('File read error')
       })
 
@@ -313,8 +311,8 @@ describe('Auto Assign Copilot Helpers', () => {
       const mockWorkspace = '/test/workspace'
       process.env.GITHUB_WORKSPACE = mockWorkspace
 
-      fs.existsSync = jest.fn(() => true)
-      fs.readFileSync = jest.fn(() => 'test content')
+      jest.spyOn(fs, 'existsSync').mockReturnValue(true)
+      jest.spyOn(fs, 'readFileSync').mockReturnValue('test content')
 
       helpers.readRefactorIssueTemplate('.github/template.md')
 
@@ -322,6 +320,17 @@ describe('Auto Assign Copilot Helpers', () => {
       const expectedPath = path.resolve(mockWorkspace, '.github/template.md')
       expect(fs.existsSync).toHaveBeenCalledWith(expectedPath)
       expect(fs.readFileSync).toHaveBeenCalledWith(expectedPath, 'utf8')
+    })
+
+    test('should prevent directory traversal attacks', () => {
+      const mockWorkspace = '/test/workspace'
+      process.env.GITHUB_WORKSPACE = mockWorkspace
+
+      // Try to access a file outside the workspace
+      const result = helpers.readRefactorIssueTemplate('../../etc/passwd')
+
+      // Should return default content and not attempt to read the file
+      expect(result).toContain('Review the codebase and make improvements')
     })
   })
 })
