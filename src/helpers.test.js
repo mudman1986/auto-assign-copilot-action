@@ -257,4 +257,71 @@ describe('Auto Assign Copilot Helpers', () => {
       expect(result).toEqual([])
     })
   })
+
+  describe('readRefactorIssueTemplate', () => {
+    const fs = require('fs')
+    const path = require('path')
+
+    // Save original process.env and fs methods
+    const originalEnv = process.env.GITHUB_WORKSPACE
+    const originalExistsSync = fs.existsSync
+    const originalReadFileSync = fs.readFileSync
+
+    afterEach(() => {
+      // Restore original methods
+      process.env.GITHUB_WORKSPACE = originalEnv
+      fs.existsSync = originalExistsSync
+      fs.readFileSync = originalReadFileSync
+    })
+
+    test('should read template file when it exists', () => {
+      const mockContent = 'Custom template content\n\nWith multiple lines'
+
+      // Mock file system methods
+      fs.existsSync = jest.fn(() => true)
+      fs.readFileSync = jest.fn(() => mockContent)
+
+      const result = helpers.readRefactorIssueTemplate('.github/REFACTOR_ISSUE_TEMPLATE.md')
+      expect(result).toBe(mockContent)
+      expect(fs.existsSync).toHaveBeenCalled()
+      expect(fs.readFileSync).toHaveBeenCalled()
+    })
+
+    test('should return default content when template file does not exist', () => {
+      // Mock file system methods
+      fs.existsSync = jest.fn(() => false)
+
+      const result = helpers.readRefactorIssueTemplate('.github/REFACTOR_ISSUE_TEMPLATE.md')
+      expect(result).toContain('Review the codebase and make improvements')
+      expect(result).toContain('Refactor duplicate code')
+      expect(fs.existsSync).toHaveBeenCalled()
+    })
+
+    test('should return default content when reading template fails', () => {
+      // Mock file system methods to throw error
+      fs.existsSync = jest.fn(() => true)
+      fs.readFileSync = jest.fn(() => {
+        throw new Error('File read error')
+      })
+
+      const result = helpers.readRefactorIssueTemplate('.github/REFACTOR_ISSUE_TEMPLATE.md')
+      expect(result).toContain('Review the codebase and make improvements')
+      expect(result).toContain('Refactor duplicate code')
+    })
+
+    test('should resolve path relative to GITHUB_WORKSPACE', () => {
+      const mockWorkspace = '/test/workspace'
+      process.env.GITHUB_WORKSPACE = mockWorkspace
+
+      fs.existsSync = jest.fn(() => true)
+      fs.readFileSync = jest.fn(() => 'test content')
+
+      helpers.readRefactorIssueTemplate('.github/template.md')
+
+      // Verify the path resolution
+      const expectedPath = path.resolve(mockWorkspace, '.github/template.md')
+      expect(fs.existsSync).toHaveBeenCalledWith(expectedPath)
+      expect(fs.readFileSync).toHaveBeenCalledWith(expectedPath, 'utf8')
+    })
+  })
 })

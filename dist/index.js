@@ -30205,7 +30205,7 @@ function wrappy (fn, cb) {
 /***/ }),
 
 /***/ 6636:
-/***/ ((module) => {
+/***/ ((module, __unused_webpack_exports, __nccwpck_require__) => {
 
 
 /**
@@ -30214,6 +30214,9 @@ function wrappy (fn, cb) {
  * This script handles automatic assignment of GitHub Copilot to issues
  * based on priority labels and various constraints.
  */
+
+const fs = __nccwpck_require__(9896)
+const path = __nccwpck_require__(6928)
 
 /**
  * Check if an issue should be skipped for assignment
@@ -30391,6 +30394,52 @@ function findAvailableRefactorIssue (
   return findAssignableIssue(refactorIssues, allowParentIssues, skipLabels)
 }
 
+/**
+ * Read the content of the refactor issue template file
+ * @param {string} templatePath - Path to the template file (relative to workspace root)
+ * @returns {string} - Template content or default content if file doesn't exist
+ */
+function readRefactorIssueTemplate (templatePath) {
+  const defaultContent = [
+    'Review the codebase and make improvements:',
+    '',
+    '- Fix failing tests (superlinter, ci, ui tests)',
+    '- Refactor duplicate code',
+    '- Address security vulnerabilities',
+    '- Improve code maintainability and performance',
+    '- Enhance UI accessibility',
+    '- Increase test coverage',
+    '',
+    '**Rules:**',
+    '- Assign tasks to all available specialized agents in the repository (e.g., UI/UX Specialist, Test Runner, Code Review, etc.)',
+    '- Make minimal surgical changes, run all linters/tests before completing.',
+    '- **If work is too extensive to complete in one session:**',
+    '  - Create GitHub issues with the `refactor` label for remaining work',
+    '  - Each issue should have clear description, acceptance criteria, and code examples',
+    '  - Focus on completing critical fixes first, defer medium-priority items to issues'
+  ].join('\n')
+
+  try {
+    // Resolve the template path relative to the workspace
+    const workspaceRoot = process.env.GITHUB_WORKSPACE || process.cwd()
+    const absolutePath = path.resolve(workspaceRoot, templatePath)
+
+    // Check if file exists
+    if (!fs.existsSync(absolutePath)) {
+      console.log(`Template file not found at ${absolutePath}, using default content`)
+      return defaultContent
+    }
+
+    // Read and return the template content
+    const content = fs.readFileSync(absolutePath, 'utf8')
+    console.log(`Successfully loaded template from ${absolutePath}`)
+    return content
+  } catch (error) {
+    console.log(`Error reading template file: ${error.message}, using default content`)
+    return defaultContent
+  }
+}
+
 module.exports = {
   shouldSkipIssue,
   shouldAssignNewIssue,
@@ -30398,7 +30447,8 @@ module.exports = {
   findAssignableIssue,
   normalizeIssueLabels,
   hasRecentRefactorIssue,
-  findAvailableRefactorIssue
+  findAvailableRefactorIssue,
+  readRefactorIssueTemplate
 }
 
 
@@ -30423,6 +30473,7 @@ module.exports = {
  * @param {Array<string>} params.skipLabels - Labels to skip
  * @param {number} params.refactorThreshold - Number of closed issues to check
  * @param {boolean} params.createRefactorIssue - Whether to create new refactor issues
+ * @param {string} params.refactorIssueTemplate - Path to the refactor issue template file
  */
 module.exports = async ({
   github,
@@ -30434,7 +30485,8 @@ module.exports = async ({
   allowParentIssues,
   skipLabels,
   refactorThreshold,
-  createRefactorIssue
+  createRefactorIssue,
+  refactorIssueTemplate
 }) => {
   const helpers = __nccwpck_require__(6636)
 
@@ -30797,6 +30849,9 @@ module.exports = async ({
     }
     const refactorLabelId = labelInfo.repository.label.id
 
+    // Read the template content
+    const issueBody = helpers.readRefactorIssueTemplate(refactorIssueTemplate)
+
     // Create and assign issue to Copilot
     if (dryRun) {
       console.log(
@@ -30840,24 +30895,7 @@ module.exports = async ({
       {
         repositoryId: repoId,
         title: `refactor: codebase improvements - ${new Date().toISOString()}`,
-        body: [
-          'Review the codebase and make improvements:',
-          '',
-          '- Fix failing tests (superlinter, ci, ui tests)',
-          '- Refactor duplicate code',
-          '- Address security vulnerabilities',
-          '- Improve code maintainability and performance',
-          '- Enhance UI accessibility',
-          '- Increase test coverage',
-          '',
-          '**Rules:**',
-          '- Assign tasks to all available specialized agents in the repository (e.g., UI/UX Specialist, Test Runner, Code Review, etc.)',
-          '- Make minimal surgical changes, run all linters/tests before completing.',
-          '- **If work is too extensive to complete in one session:**',
-          '  - Create GitHub issues with the `refactor` label for remaining work',
-          '  - Each issue should have clear description, acceptance criteria, and code examples',
-          '  - Focus on completing critical fixes first, defer medium-priority items to issues'
-        ].join('\n'),
+        body: issueBody,
         assigneeIds: [copilotBotId]
       }
     )
@@ -33105,6 +33143,7 @@ async function run () {
     const refactorThresholdRaw = core.getInput('refactor-threshold') || '4'
     const refactorThreshold = parseInt(refactorThresholdRaw, 10)
     const createRefactorIssue = core.getInput('create-refactor-issue') === 'true'
+    const refactorIssueTemplate = core.getInput('refactor-issue-template') || '.github/REFACTOR_ISSUE_TEMPLATE.md'
 
     // Parse skip labels from comma-separated string
     const skipLabels = skipLabelsRaw
@@ -33120,6 +33159,7 @@ async function run () {
   allowParentIssues: ${allowParentIssues}
   refactorThreshold: ${refactorThreshold}
   createRefactorIssue: ${createRefactorIssue}
+  refactorIssueTemplate: ${refactorIssueTemplate}
   skipLabels: ${JSON.stringify(skipLabels)}`)
 
     // Create authenticated Octokit client
@@ -33139,7 +33179,8 @@ async function run () {
       allowParentIssues,
       skipLabels,
       refactorThreshold,
-      createRefactorIssue
+      createRefactorIssue,
+      refactorIssueTemplate
     })
 
     // Set outputs

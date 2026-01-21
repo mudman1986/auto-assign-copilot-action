@@ -15,6 +15,7 @@
  * @param {Array<string>} params.skipLabels - Labels to skip
  * @param {number} params.refactorThreshold - Number of closed issues to check
  * @param {boolean} params.createRefactorIssue - Whether to create new refactor issues
+ * @param {string} params.refactorIssueTemplate - Path to the refactor issue template file
  */
 module.exports = async ({
   github,
@@ -26,7 +27,8 @@ module.exports = async ({
   allowParentIssues,
   skipLabels,
   refactorThreshold,
-  createRefactorIssue
+  createRefactorIssue,
+  refactorIssueTemplate
 }) => {
   const helpers = require('./helpers.js')
 
@@ -389,6 +391,9 @@ module.exports = async ({
     }
     const refactorLabelId = labelInfo.repository.label.id
 
+    // Read the template content
+    const issueBody = helpers.readRefactorIssueTemplate(refactorIssueTemplate)
+
     // Create and assign issue to Copilot
     if (dryRun) {
       console.log(
@@ -432,24 +437,7 @@ module.exports = async ({
       {
         repositoryId: repoId,
         title: `refactor: codebase improvements - ${new Date().toISOString()}`,
-        body: [
-          'Review the codebase and make improvements:',
-          '',
-          '- Fix failing tests (superlinter, ci, ui tests)',
-          '- Refactor duplicate code',
-          '- Address security vulnerabilities',
-          '- Improve code maintainability and performance',
-          '- Enhance UI accessibility',
-          '- Increase test coverage',
-          '',
-          '**Rules:**',
-          '- Assign tasks to all available specialized agents in the repository (e.g., UI/UX Specialist, Test Runner, Code Review, etc.)',
-          '- Make minimal surgical changes, run all linters/tests before completing.',
-          '- **If work is too extensive to complete in one session:**',
-          '  - Create GitHub issues with the `refactor` label for remaining work',
-          '  - Each issue should have clear description, acceptance criteria, and code examples',
-          '  - Focus on completing critical fixes first, defer medium-priority items to issues'
-        ].join('\n'),
+        body: issueBody,
         assigneeIds: [copilotBotId]
       }
     )

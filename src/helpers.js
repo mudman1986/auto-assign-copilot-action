@@ -7,6 +7,9 @@
  * based on priority labels and various constraints.
  */
 
+const fs = require('fs')
+const path = require('path')
+
 /**
  * Check if an issue should be skipped for assignment
  * @param {Object} issue - Issue object from parseIssueData
@@ -183,6 +186,52 @@ function findAvailableRefactorIssue (
   return findAssignableIssue(refactorIssues, allowParentIssues, skipLabels)
 }
 
+/**
+ * Read the content of the refactor issue template file
+ * @param {string} templatePath - Path to the template file (relative to workspace root)
+ * @returns {string} - Template content or default content if file doesn't exist
+ */
+function readRefactorIssueTemplate (templatePath) {
+  const defaultContent = [
+    'Review the codebase and make improvements:',
+    '',
+    '- Fix failing tests (superlinter, ci, ui tests)',
+    '- Refactor duplicate code',
+    '- Address security vulnerabilities',
+    '- Improve code maintainability and performance',
+    '- Enhance UI accessibility',
+    '- Increase test coverage',
+    '',
+    '**Rules:**',
+    '- Assign tasks to all available specialized agents in the repository (e.g., UI/UX Specialist, Test Runner, Code Review, etc.)',
+    '- Make minimal surgical changes, run all linters/tests before completing.',
+    '- **If work is too extensive to complete in one session:**',
+    '  - Create GitHub issues with the `refactor` label for remaining work',
+    '  - Each issue should have clear description, acceptance criteria, and code examples',
+    '  - Focus on completing critical fixes first, defer medium-priority items to issues'
+  ].join('\n')
+
+  try {
+    // Resolve the template path relative to the workspace
+    const workspaceRoot = process.env.GITHUB_WORKSPACE || process.cwd()
+    const absolutePath = path.resolve(workspaceRoot, templatePath)
+
+    // Check if file exists
+    if (!fs.existsSync(absolutePath)) {
+      console.log(`Template file not found at ${absolutePath}, using default content`)
+      return defaultContent
+    }
+
+    // Read and return the template content
+    const content = fs.readFileSync(absolutePath, 'utf8')
+    console.log(`Successfully loaded template from ${absolutePath}`)
+    return content
+  } catch (error) {
+    console.log(`Error reading template file: ${error.message}, using default content`)
+    return defaultContent
+  }
+}
+
 module.exports = {
   shouldSkipIssue,
   shouldAssignNewIssue,
@@ -190,5 +239,6 @@ module.exports = {
   findAssignableIssue,
   normalizeIssueLabels,
   hasRecentRefactorIssue,
-  findAvailableRefactorIssue
+  findAvailableRefactorIssue,
+  readRefactorIssueTemplate
 }
