@@ -6,6 +6,20 @@
 
 const helpers = require('../src/helpers.js')
 
+// Helper to create mock issue objects for testing
+const createMockIssue = (overrides = {}) => ({
+  id: '123',
+  number: 42,
+  title: 'Test Issue',
+  url: 'https://github.com/test/repo/issues/42',
+  body: '',
+  assignees: { nodes: [] },
+  labels: { nodes: [] },
+  trackedIssues: { totalCount: 0 },
+  trackedInIssues: { totalCount: 0 },
+  ...overrides
+})
+
 describe('Auto Assign Copilot Helpers', () => {
   describe('shouldSkipIssue', () => {
     test('should skip assigned issues', () => {
@@ -106,17 +120,11 @@ describe('Auto Assign Copilot Helpers', () => {
 
   describe('parseIssueData', () => {
     test('should correctly parse issue data', () => {
-      const issue = {
-        id: '123',
-        number: 42,
-        title: 'Test Issue',
-        url: 'https://github.com/test/repo/issues/42',
+      const issue = createMockIssue({
         body: 'Issue description',
-        assignees: { nodes: [] },
         labels: { nodes: [{ name: 'bug' }] },
-        trackedIssues: { totalCount: 0 },
         trackedInIssues: { totalCount: 1 }
-      }
+      })
       const result = helpers.parseIssueData(issue)
       expect(result.id).toBe('123')
       expect(result.number).toBe(42)
@@ -127,33 +135,17 @@ describe('Auto Assign Copilot Helpers', () => {
     })
 
     test('should detect assigned issues', () => {
-      const issue = {
-        id: '123',
-        number: 42,
-        title: 'Test Issue',
-        url: 'https://github.com/test/repo/issues/42',
-        body: '',
-        assignees: { nodes: [{ login: 'user1' }] },
-        labels: { nodes: [] },
-        trackedIssues: { totalCount: 0 },
-        trackedInIssues: { totalCount: 0 }
-      }
+      const issue = createMockIssue({
+        assignees: { nodes: [{ login: 'user1' }] }
+      })
       const result = helpers.parseIssueData(issue)
       expect(result.isAssigned).toBe(true)
     })
 
     test('should detect issues with sub-issues', () => {
-      const issue = {
-        id: '123',
-        number: 42,
-        title: 'Test Issue',
-        url: 'https://github.com/test/repo/issues/42',
-        body: '',
-        assignees: { nodes: [] },
-        labels: { nodes: [] },
-        trackedIssues: { totalCount: 3 },
-        trackedInIssues: { totalCount: 0 }
-      }
+      const issue = createMockIssue({
+        trackedIssues: { totalCount: 3 }
+      })
       const result = helpers.parseIssueData(issue)
       expect(result.hasSubIssues).toBe(true)
     })
@@ -162,28 +154,19 @@ describe('Auto Assign Copilot Helpers', () => {
   describe('findAssignableIssue', () => {
     test('should find first assignable issue', () => {
       const issues = [
-        {
+        createMockIssue({
           id: '1',
           number: 1,
           title: 'Issue 1',
           url: 'url1',
-          body: '',
-          assignees: { nodes: [{ login: 'user1' }] },
-          labels: { nodes: [] },
-          trackedIssues: { totalCount: 0 },
-          trackedInIssues: { totalCount: 0 }
-        },
-        {
+          assignees: { nodes: [{ login: 'user1' }] }
+        }),
+        createMockIssue({
           id: '2',
           number: 2,
           title: 'Issue 2',
-          url: 'url2',
-          body: '',
-          assignees: { nodes: [] },
-          labels: { nodes: [] },
-          trackedIssues: { totalCount: 0 },
-          trackedInIssues: { totalCount: 0 }
-        }
+          url: 'url2'
+        })
       ]
       const result = helpers.findAssignableIssue(issues, false, [])
       expect(result).not.toBeNull()
@@ -192,17 +175,13 @@ describe('Auto Assign Copilot Helpers', () => {
 
     test('should return null when no assignable issues', () => {
       const issues = [
-        {
+        createMockIssue({
           id: '1',
           number: 1,
           title: 'Issue 1',
           url: 'url1',
-          body: '',
-          assignees: { nodes: [{ login: 'user1' }] },
-          labels: { nodes: [] },
-          trackedIssues: { totalCount: 0 },
-          trackedInIssues: { totalCount: 0 }
-        }
+          assignees: { nodes: [{ login: 'user1' }] }
+        })
       ]
       const result = helpers.findAssignableIssue(issues, false, [])
       expect(result).toBeNull()

@@ -3,7 +3,7 @@
 # Auto Assign Copilot to Issues
 
 [![GitHub release](https://img.shields.io/github/v/release/mudman1986/auto-assign-copilot-action)](https://github.com/mudman1986/auto-assign-copilot-action/releases)
-[![CI Tests](https://github.com/mudman1986/auto-assign-copilot-action/workflows/ci%20tests/badge.svg)](https://github.com/mudman1986/auto-assign-copilot-action/actions)
+[![CI Tests](https://github.com/mudman1986/auto-assign-copilot-action/workflows/ci%20tests/badge.svg?branch=main)](https://github.com/mudman1986/auto-assign-copilot-action/actions)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
 **Autonomous agent orchestration for GitHub Copilot - intelligent, priority-based issue assignment**

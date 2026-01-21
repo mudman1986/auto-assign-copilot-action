@@ -35,17 +35,7 @@ async function run () {
       .map((label) => label.trim())
       .filter((label) => label.length > 0)
 
-    console.log(`Running auto-assign-copilot action:
-  mode: ${mode}
-  force: ${force}
-  labelOverride: ${labelOverride}
-  dryRun: ${dryRun}
-  allowParentIssues: ${allowParentIssues}
-  refactorThreshold: ${refactorThreshold}
-  createRefactorIssue: ${createRefactorIssue}
-  refactorIssueTemplate: ${refactorIssueTemplate}
-  waitSeconds: ${waitSeconds}
-  skipLabels: ${JSON.stringify(skipLabels)}`)
+    console.log(`Running auto-assign-copilot action (mode: ${mode}, force: ${force}, dryRun: ${dryRun})`)
 
     // Create authenticated Octokit client
     const octokit = github.getOctokit(token)
