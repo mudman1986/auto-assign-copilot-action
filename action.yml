@@ -47,9 +47,9 @@ inputs:
     required: false
     default: ".github/REFACTOR_ISSUE_TEMPLATE.md"
   wait-seconds:
-    description: "Number of seconds to wait before assigning an issue when triggered by issue events (e.g., issue closed). Allows for a grace period for manual assignment. Default: 0 (no wait)"
+    description: "Number of seconds to wait before assigning an issue when triggered by issue events (e.g., issue closed). Allows for a grace period for manual assignment. Default: 300 (5 minutes)"
     required: false
-    default: "0"
+    default: "300"
 
 outputs:
   assigned-issue-number:
