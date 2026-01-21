@@ -64,7 +64,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Assign Copilot to issue
-        uses: mudman1986/auto-assign-copilot-action@v1.3.0
+        uses: mudman1986/auto-assign-copilot-action@v1.3.1
         with:
           github-token: ${{ secrets.COPILOT_ASSIGN_PAT }}
           mode: ${{ inputs.mode || 'auto' }}
