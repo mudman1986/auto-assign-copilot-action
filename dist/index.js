@@ -35775,10 +35775,19 @@ module.exports = async ({
       )
       return subIssuesResponse.data.length
     } catch (error) {
-      console.log(
-        `  Warning: Could not check sub-issues for issue #${issueNumber}: ${error.message}`
-      )
+      // Silently handle errors - most issues won't have sub-issues endpoint
       return 0
+    }
+  }
+
+  /**
+   * Enriches issues with sub-issue counts from REST API
+   * @param {Array} issues - Array of issue objects
+   */
+  async function enrichWithSubIssues (issues) {
+    for (const issue of issues) {
+      const totalSubIssues = await getSubIssuesCount(issue.number)
+      issue.trackedIssues = { totalCount: totalSubIssues }
     }
   }
 
@@ -35817,11 +35826,6 @@ module.exports = async ({
 
     const closedIssues = closedIssuesResponse.repository.issues.nodes
     console.log(`Found ${closedIssues.length} recently closed issues`)
-
-    closedIssues.forEach((issue) => {
-      const labels = issue.labels.nodes.map((l) => l.name).join(', ')
-      console.log(`  - #${issue.number}: ${issue.title} (labels: ${labels})`)
-    })
 
     // Check if any of the last N closed issues have refactor label
     const hasRefactor = helpers.hasRecentRefactorIssue(
@@ -35866,10 +35870,6 @@ module.exports = async ({
     (n) => n.login === 'copilot-swe-agent' && n.__typename === 'Bot'
   )
   if (!copilotBot) {
-    console.log('Actors found:')
-    repoInfo.repository.suggestedActors.nodes.forEach((n) =>
-      console.log(JSON.stringify(n))
-    )
     throw new Error('Copilot bot agent not found in suggestedActors')
   }
   const copilotBotId = copilotBot.id
@@ -35920,16 +35920,11 @@ module.exports = async ({
         assignee.login === copilotLogin || assignee.id === copilotBotId
     )
   )
-  console.log(
-    `Found ${currentIssues.length} issue(s) assigned to copilot (login="${copilotLogin}", id="${copilotBotId}")`
-  )
 
   if (currentIssues.length > 0) {
-    console.log('Copilot is currently assigned to the following issues:')
-    currentIssues.forEach((issue) => {
-      const labels = issue.labels.nodes.map((l) => l.name).join(', ')
-      console.log(`  - #${issue.number}: ${issue.title} (labels: ${labels})`)
-    })
+    console.log(
+      `Found ${currentIssues.length} issue(s) assigned to copilot`
+    )
 
     const { shouldAssign, reason } = helpers.shouldAssignNewIssue(
       currentIssues,
@@ -36002,20 +35997,8 @@ module.exports = async ({
       `Found ${refactorIssues.length} open issues with refactor label`
     )
 
-    if (refactorIssues.length > 0) {
-      console.log('  Refactor issues:')
-      refactorIssues.forEach((issue) => {
-        console.log(
-          `    #${issue.number}: ${issue.title} (assigned: ${issue.assignees.nodes.length > 0})`
-        )
-      })
-    }
-
     // Check for sub-issues via REST API
-    for (const issue of refactorIssues) {
-      const totalSubIssues = await getSubIssuesCount(issue.number)
-      issue.trackedIssues = { totalCount: totalSubIssues }
-    }
+    await enrichWithSubIssues(refactorIssues)
 
     // Try to find an assignable refactor issue
     const availableRefactorIssue = helpers.findAvailableRefactorIssue(
@@ -36270,29 +36253,13 @@ module.exports = async ({
         }
       )
 
-      // Log ALL issues with their trackedIssues data for debugging
       console.log(
-        `  Found ${issues.repository.issues.nodes.length} issues with label "${label}":`
+        `  Found ${issues.repository.issues.nodes.length} issues with label "${label}"`
       )
-      issues.repository.issues.nodes.forEach((issue) => {
-        const trackedCount = issue.trackedIssues
-          ? issue.trackedIssues.totalCount
-          : 'undefined'
-        const trackedInCount = issue.trackedInIssues
-          ? issue.trackedInIssues.totalCount
-          : 'undefined'
-        console.log(
-          `    #${issue.number}: "${issue.title}" - trackedIssues: ${trackedCount}, trackedInIssues: ${trackedInCount}, assignees: ${issue.assignees.nodes.length}`
-        )
-      })
 
       // WORKAROUND: GraphQL trackedIssues returns 0 even when sub-issues exist
       // Solution: Use REST API sub_issues endpoint
-      console.log('  Checking for sub-issues via REST API...')
-      for (const issue of issues.repository.issues.nodes) {
-        const totalSubIssues = await getSubIssuesCount(issue.number)
-        issue.trackedIssues = { totalCount: totalSubIssues }
-      }
+      await enrichWithSubIssues(issues.repository.issues.nodes)
 
       // Find first assignable issue using simplified helper function
       const assignable = helpers.findAssignableIssue(
@@ -36307,25 +36274,6 @@ module.exports = async ({
         )
         break
       }
-
-      // Log detailed analysis of why issues were skipped
-      issues.repository.issues.nodes.forEach((issue) => {
-        const parsed = helpers.parseIssueData(issue)
-        const { shouldSkip, reason } = helpers.shouldSkipIssue(
-          parsed,
-          allowParentIssues,
-          skipLabels
-        )
-        console.log(
-          `  Issue ${context.repo.owner}/${context.repo.repo}#${issue.number}: ${issue.title}`
-        )
-        console.log(
-          `    - Assigned: ${parsed.isAssigned}, HasSubIssues: ${parsed.hasSubIssues}, IsSubIssue: ${parsed.isSubIssue}, Refactor: ${parsed.isRefactorIssue}`
-        )
-        if (shouldSkip) {
-          console.log(`    - Skipped: ${reason}`)
-        }
-      })
     }
 
     // If no issue with priority labels, try other open issues
@@ -36381,13 +36329,7 @@ module.exports = async ({
       )
 
       // Apply the same REST API sub-issue detection
-      console.log(
-        `  Checking sub-issues for ${nonPriorityIssues.length} non-priority issues via REST API...`
-      )
-      for (const issue of nonPriorityIssues) {
-        const totalSubIssues = await getSubIssuesCount(issue.number)
-        issue.trackedIssues = { totalCount: totalSubIssues }
-      }
+      await enrichWithSubIssues(nonPriorityIssues)
 
       issueToAssign = helpers.findAssignableIssue(
         nonPriorityIssues,
@@ -36816,17 +36758,7 @@ async function run () {
       .map((label) => label.trim())
       .filter((label) => label.length > 0)
 
-    console.log(`Running auto-assign-copilot action:
-  mode: ${mode}
-  force: ${force}
-  labelOverride: ${labelOverride}
-  dryRun: ${dryRun}
-  allowParentIssues: ${allowParentIssues}
-  refactorThreshold: ${refactorThreshold}
-  createRefactorIssue: ${createRefactorIssue}
-  refactorIssueTemplate: ${refactorIssueTemplate}
-  waitSeconds: ${waitSeconds}
-  skipLabels: ${JSON.stringify(skipLabels)}`)
+    console.log(`Running auto-assign-copilot action (mode: ${mode}, force: ${force}, dryRun: ${dryRun})`)
 
     // Create authenticated Octokit client
     const octokit = github.getOctokit(token)
