@@ -1,6 +1,13 @@
 name: test action
 
 on:
+  push:
+    branches:
+      - main
+      - 'releases/**'
+  pull_request:
+    branches:
+      - main
   workflow_dispatch:
     inputs:
       mode:
@@ -59,26 +66,26 @@ jobs:
         uses: ./
         with:
           github-token: ${{ secrets.COPILOT_ASSIGN_PAT }}
-          mode: ${{ inputs.mode }}
-          label-override: ${{ inputs.label-override }}
-          force: ${{ inputs.force }}
-          dry-run: ${{ inputs.dry-run }}
-          allow-parent-issues: ${{ inputs.allow-parent-issues }}
-          skip-labels: ${{ inputs.skip-labels }}
-          refactor-threshold: ${{ inputs.refactor-threshold }}
+          mode: ${{ inputs.mode || 'auto' }}
+          label-override: ${{ inputs.label-override || '' }}
+          force: ${{ inputs.force || false }}
+          dry-run: ${{ inputs.dry-run || true }}
+          allow-parent-issues: ${{ inputs.allow-parent-issues || false }}
+          skip-labels: ${{ inputs.skip-labels || 'no-ai,refining' }}
+          refactor-threshold: ${{ inputs.refactor-threshold || '4' }}
 
       - name: Display action outputs
         run: |
           echo "## Action Test Results" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "### Inputs Used:" >> $GITHUB_STEP_SUMMARY
-          echo "- **Mode**: ${{ inputs.mode }}" >> $GITHUB_STEP_SUMMARY
-          echo "- **Label Override**: ${{ inputs.label-override }}" >> $GITHUB_STEP_SUMMARY
-          echo "- **Force**: ${{ inputs.force }}" >> $GITHUB_STEP_SUMMARY
-          echo "- **Dry Run**: ${{ inputs.dry-run }}" >> $GITHUB_STEP_SUMMARY
-          echo "- **Allow Parent Issues**: ${{ inputs.allow-parent-issues }}" >> $GITHUB_STEP_SUMMARY
-          echo "- **Skip Labels**: ${{ inputs.skip-labels }}" >> $GITHUB_STEP_SUMMARY
-          echo "- **Refactor Threshold**: ${{ inputs.refactor-threshold }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **Mode**: ${{ inputs.mode || 'auto' }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **Label Override**: ${{ inputs.label-override || '' }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **Force**: ${{ inputs.force || false }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **Dry Run**: ${{ inputs.dry-run || true }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **Allow Parent Issues**: ${{ inputs.allow-parent-issues || false }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **Skip Labels**: ${{ inputs.skip-labels || 'no-ai,refining' }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **Refactor Threshold**: ${{ inputs.refactor-threshold || '4' }}" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "### Outputs:" >> $GITHUB_STEP_SUMMARY
           echo "- **Assigned Issue Number**: ${{ steps.test-action.outputs.assigned-issue-number }}" >> $GITHUB_STEP_SUMMARY
