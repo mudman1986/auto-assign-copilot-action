@@ -113,7 +113,7 @@ jobs:
 
 Create a Personal Access Token (PAT) from an account that has a GitHub Copilot license. The PAT requires the following permissions:
 - `issues:write` - To assign issues
-- `repo` (or `public_repo` for public repositories) - To access repository data
+- `contents:read` - To access repository data (or `repo` scope for classic PATs)
 
 Add the PAT to your repository secrets as `COPILOT_ASSIGN_PAT`.
 
@@ -129,7 +129,7 @@ The action will autonomously assign issues to Copilot based on intelligent prior
 
 | Input | Description | Required | Default |
 |-------|-------------|----------|---------|
-| **`github-token`** | PAT from an account with GitHub Copilot license (requires `issues:write` and `repo` permissions) | ✅ Yes | - |
+| **`github-token`** | PAT from an account with GitHub Copilot license (requires `issues:write` and `contents:read` permissions) | ✅ Yes | - |
 | `mode` | Assignment mode: `auto` or `refactor` | No | `auto` |
 | `label-override` | Specific label to filter (auto mode only) | No | `""` |
 | `force` | Force assignment even if Copilot has issues | No | `false` |
