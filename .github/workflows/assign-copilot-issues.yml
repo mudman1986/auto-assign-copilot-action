@@ -79,7 +79,7 @@ jobs:
       )
     steps:
       - name: Assign Copilot to issue
-        uses: mudman1986/auto-assign-copilot-action@main
+        uses: mudman1986/auto-assign-copilot-action@v1.1.0
         with:
           github-token: ${{ secrets.COPILOT_ASSIGN_PAT }}
           mode: ${{ inputs.mode || 'auto' }}
