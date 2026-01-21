@@ -62,27 +62,51 @@
 Create `.github/workflows/assign-copilot.yml`:
 
 ```yaml
-name: Autonomous Issue Assignment
+name: Auto Assign Copilot
 
 on:
+  # Daily schedule to ensure Copilot always has work
   schedule:
-    - cron: "0 10 * * *"  # Daily agent check at 10 AM UTC
+    - cron: "0 10 * * *"  # Daily at 10 AM UTC
+  
+  # Trigger when an issue is closed (with grace period for manual assignment)
   issues:
     types: [closed]
+  
+  # Manual trigger with options
   workflow_dispatch:
 
 permissions:
   contents: read
   issues: write
 
+concurrency:
+  group: assign-copilot-issues
+  cancel-in-progress: true
+
 jobs:
-  assign:
+  # Wait job to provide grace period when issue is closed
+  wait-grace-period:
     runs-on: ubuntu-latest
+    if: github.event_name == 'issues'
     steps:
-      - name: Assign AI Agent to Issue
+      - name: Wait 5 minutes for manual assignment
+        run: sleep 300
+
+  assign-issue:
+    runs-on: ubuntu-latest
+    needs: [wait-grace-period]
+    if: |
+      always() && (
+        needs.wait-grace-period.result == 'success' ||
+        needs.wait-grace-period.result == 'skipped'
+      )
+    steps:
+      - name: Assign Copilot to issue
         uses: mudman1986/auto-assign-copilot-action@v1.1.0
         with:
           github-token: ${{ secrets.COPILOT_ASSIGN_PAT }}
+          mode: ${{ inputs.mode || 'auto' }}
 ```
 
 ### 2. Set Up Authentication
