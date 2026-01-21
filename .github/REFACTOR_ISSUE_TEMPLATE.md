@@ -18,6 +18,6 @@ Review the codebase and identify opportunities for improvement.
 - Run existing tests and linters before completing
 - Document any significant changes
 - Consider backward compatibility
-- **Delegate tasks to suitable agents** in the `.github/agents` folder when available (e.g., janitor agent for cleanup tasks)
+- **Delegate tasks to suitable agents** in the `.github/agents` folder when available
 
 **Note:** If the scope is too large for a single session, create additional issues with the `refactor` label for remaining work.
