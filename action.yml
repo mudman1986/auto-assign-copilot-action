@@ -46,6 +46,10 @@ inputs:
     description: "Path to the issue template file for refactor issues. Default: .github/REFACTOR_ISSUE_TEMPLATE.md"
     required: false
     default: ".github/REFACTOR_ISSUE_TEMPLATE.md"
+  wait-seconds:
+    description: "Number of seconds to wait before assigning an issue when triggered by issue events (e.g., issue closed). Allows for a grace period for manual assignment. Default: 0 (no wait)"
+    required: false
+    default: "0"
 
 outputs:
   assigned-issue-number:

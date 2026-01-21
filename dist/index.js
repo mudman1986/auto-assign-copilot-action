@@ -35727,6 +35727,7 @@ module.exports = {
  * @param {number} params.refactorThreshold - Number of closed issues to check
  * @param {boolean} params.createRefactorIssue - Whether to create new refactor issues
  * @param {string} params.refactorIssueTemplate - Path to the refactor issue template file
+ * @param {number} params.waitSeconds - Number of seconds to wait for issue events
  */
 module.exports = async ({
   github,
@@ -35739,9 +35740,19 @@ module.exports = async ({
   skipLabels,
   refactorThreshold,
   createRefactorIssue,
-  refactorIssueTemplate
+  refactorIssueTemplate,
+  waitSeconds
 }) => {
   const helpers = __nccwpck_require__(6636)
+
+  // Wait for grace period if this is an issue event and wait-seconds is configured
+  if (context.eventName === 'issues' && waitSeconds > 0) {
+    console.log(
+      `Issue event detected. Waiting ${waitSeconds} seconds for grace period before proceeding...`
+    )
+    await new Promise((resolve) => setTimeout(resolve, waitSeconds * 1000))
+    console.log('Grace period complete. Proceeding with assignment.')
+  }
 
   /**
    * Fetch sub-issues for an issue using the REST API
@@ -36796,6 +36807,8 @@ async function run () {
     const refactorThreshold = parseInt(refactorThresholdRaw, 10)
     const createRefactorIssue = core.getInput('create-refactor-issue') === 'true'
     const refactorIssueTemplate = core.getInput('refactor-issue-template') || '.github/REFACTOR_ISSUE_TEMPLATE.md'
+    const waitSecondsRaw = core.getInput('wait-seconds') || '0'
+    const waitSeconds = parseInt(waitSecondsRaw, 10)
 
     // Parse skip labels from comma-separated string
     const skipLabels = skipLabelsRaw
@@ -36812,6 +36825,7 @@ async function run () {
   refactorThreshold: ${refactorThreshold}
   createRefactorIssue: ${createRefactorIssue}
   refactorIssueTemplate: ${refactorIssueTemplate}
+  waitSeconds: ${waitSeconds}
   skipLabels: ${JSON.stringify(skipLabels)}`)
 
     // Create authenticated Octokit client
@@ -36832,7 +36846,8 @@ async function run () {
       skipLabels,
       refactorThreshold,
       createRefactorIssue,
-      refactorIssueTemplate
+      refactorIssueTemplate,
+      waitSeconds
     })
 
     // Set outputs
