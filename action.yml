@@ -42,6 +42,10 @@ inputs:
     description: "Whether to create new refactor issues when none are available. Default: true (create refactor issues)"
     required: false
     default: "true"
+  refactor-issue-template:
+    description: "Path to the issue template file for refactor issues. Default: .github/REFACTOR_ISSUE_TEMPLATE.md"
+    required: false
+    default: ".github/REFACTOR_ISSUE_TEMPLATE.md"
 
 outputs:
   assigned-issue-number:

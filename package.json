@@ -26,7 +26,13 @@
 		"@semantic-release/changelog": "^6.0.3",
 		"@semantic-release/git": "^10.0.1",
 		"conventional-changelog-conventionalcommits": "^9.0.0",
-		"semantic-release": "^24.0.0"
+		"semantic-release": "^25.0.2"
+	},
+	"overrides": {
+		"tar": "^7.5.4",
+		"glob": "^11.0.0",
+		"undici": "^6.23.0",
+		"test-exclude": "^7.0.1"
 	},
 	"jest": {
 		"testEnvironment": "node",

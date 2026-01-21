@@ -7,6 +7,9 @@
  * based on priority labels and various constraints.
  */
 
+const fs = require('fs')
+const path = require('path')
+
 /**
  * Check if an issue should be skipped for assignment
  * @param {Object} issue - Issue object from parseIssueData
@@ -183,6 +186,70 @@ function findAvailableRefactorIssue (
   return findAssignableIssue(refactorIssues, allowParentIssues, skipLabels)
 }
 
+/**
+ * Read the content of the refactor issue template file
+ * @param {string} templatePath - Path to the template file (relative to workspace root)
+ * @returns {string} - Template content or default content if file doesn't exist
+ */
+function readRefactorIssueTemplate (templatePath) {
+  const defaultContent = [
+    'Review the codebase and identify opportunities for improvement.',
+    '',
+    '## Suggested Areas to Review:',
+    '',
+    '- Code quality and maintainability',
+    '- Test coverage and reliability',
+    '- Documentation completeness',
+    '- Performance optimizations',
+    '- Security best practices',
+    '- Code duplication',
+    '- Error handling',
+    '- Dependencies and updates',
+    '',
+    '## Guidelines:',
+    '',
+    '- Prioritize high-impact, low-risk improvements',
+    '- Make focused, incremental changes',
+    '- Run existing tests and linters before completing',
+    '- Document any significant changes',
+    '- Consider backward compatibility',
+    '- **Delegate tasks to suitable agents** in the `.github/agents` folder when available',
+    '',
+    '**Note:** If the scope is too large for a single session, create additional issues with the `refactor` label for remaining work.'
+  ].join('\n')
+
+  try {
+    // Resolve the template path relative to the workspace
+    const workspaceRoot = process.env.GITHUB_WORKSPACE || process.cwd()
+    const absolutePath = path.resolve(workspaceRoot, templatePath)
+
+    // Validate that the resolved path is within the workspace to prevent directory traversal
+    const normalizedWorkspace = path.resolve(workspaceRoot)
+    const normalizedPath = path.resolve(absolutePath)
+    const relativePath = path.relative(normalizedWorkspace, normalizedPath)
+
+    // Check if the relative path escapes the workspace (contains '..' or is absolute)
+    if (relativePath.startsWith('..') || path.isAbsolute(relativePath)) {
+      console.log(`Template path ${templatePath} is outside workspace, using default content`)
+      return defaultContent
+    }
+
+    // Check if file exists
+    if (!fs.existsSync(absolutePath)) {
+      console.log(`Template file not found at ${absolutePath}, using default content`)
+      return defaultContent
+    }
+
+    // Read and return the template content
+    const content = fs.readFileSync(absolutePath, 'utf8')
+    console.log(`Successfully loaded template from ${absolutePath}`)
+    return content
+  } catch (error) {
+    console.log(`Error reading template file: ${error.message}, using default content`)
+    return defaultContent
+  }
+}
+
 module.exports = {
   shouldSkipIssue,
   shouldAssignNewIssue,
@@ -190,5 +257,6 @@ module.exports = {
   findAssignableIssue,
   normalizeIssueLabels,
   hasRecentRefactorIssue,
-  findAvailableRefactorIssue
+  findAvailableRefactorIssue,
+  readRefactorIssueTemplate
 }

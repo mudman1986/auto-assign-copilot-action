@@ -1,145 +1,262 @@
+<div align="center">
+
 # Auto Assign Copilot to Issues
 
-A GitHub Action that automatically assigns GitHub Copilot to issues based on priority labels and configurable rules.
+[![GitHub release](https://img.shields.io/github/v/release/mudman1986/auto-assign-copilot-action)](https://github.com/mudman1986/auto-assign-copilot-action/releases)
+[![CI Tests](https://github.com/mudman1986/auto-assign-copilot-action/workflows/ci%20tests/badge.svg)](https://github.com/mudman1986/auto-assign-copilot-action/actions)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+
+**Autonomous agent orchestration for GitHub Copilot - intelligent, priority-based issue assignment**
+
+[Features](#features) • [Quick Start](#quick-start) • [Configuration](#configuration) • [Examples](#examples)
+
+</div>
+
+---
 
 ## Features
 
-- 🎯 **Priority-based assignment**: Assigns issues by priority (bug > documentation > refactor > enhancement)
-- 🔄 **Refactor mode**: Creates or assigns refactor issues to ensure Copilot always has work
-- 🏷️ **Label filtering**: Skip issues with specific labels (e.g., `no-ai`, `refining`)
-- 🌳 **Parent issue handling**: Optionally skip issues with sub-issues
-- 🧪 **Dry run mode**: Preview what would be assigned without making changes
-- ⚡ **Force assignment**: Override existing assignments when needed
-- 📊 **Configurable ratios**: Control refactor issue frequency (default: 1 in 5 closed issues)
+<table>
+<tr>
+<td width="33%" valign="top">
 
-## Usage
+### Intelligent Assignment
+- **Priority-based routing**: bug → documentation → refactor → enhancement
+- **Adaptive fallback**: Autonomous selection from available issues
+- **Grace period**: 5-minute wait after issue closure for human intervention
 
-### Basic Example
+</td>
+<td width="33%" valign="top">
+
+### Autonomous Refactor Management
+- **Self-healing**: Creates refactor tasks when needed
+- **Template-driven**: Custom issue templates for consistent agent instructions
+- **Configurable ratio**: Control refactor frequency (default: 1 in 5)
+
+</td>
+<td width="33%" valign="top">
+
+### Safety & Control
+- **Dry run mode**: Preview agent decisions without executing
+- **Label-based filtering**: Skip issues marked for human attention
+- **Override capability**: Manual control when needed
+
+</td>
+</tr>
+</table>
+
+### Additional Capabilities
+
+- **Customizable agent instructions** via issue templates
+- **Parent task handling** - Skip or allow issues with sub-tasks
+- **Flexible orchestration** - Enable/disable autonomous refactor creation
+- **Actionable outputs** - Issue number, URL, and assignment mode
+- **Secure by design** - Path validation prevents directory traversal attacks
+
+---
+
+## Quick Start
+
+### 1. Create Agent Workflow
+
+Create `.github/workflows/assign-copilot.yml`:
 
 ```yaml
-name: Assign Copilot to Issues
+name: Auto Assign Copilot
 
 on:
+  # Daily schedule to ensure Copilot always has work
   schedule:
-    - cron: "0 10 * * *" # Daily at 10 AM UTC
+    - cron: "0 10 * * *"  # Daily at 10 AM UTC
+  
+  # Trigger when an issue is closed (with grace period for manual assignment)
   issues:
     types: [closed]
+  
+  # Manual trigger with options
   workflow_dispatch:
 
 permissions:
   contents: read
   issues: write
 
-jobs:
-  assign:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
+concurrency:
+  group: assign-copilot-issues
+  cancel-in-progress: true
 
+jobs:
+  # Wait job to provide grace period when issue is closed
+  wait-grace-period:
+    runs-on: ubuntu-latest
+    if: github.event_name == 'issues'
+    steps:
+      - name: Wait 5 minutes for manual assignment
+        run: sleep 300
+
+  assign-issue:
+    runs-on: ubuntu-latest
+    needs: [wait-grace-period]
+    if: |
+      always() && (
+        needs.wait-grace-period.result == 'success' ||
+        needs.wait-grace-period.result == 'skipped'
+      )
+    steps:
       - name: Assign Copilot to issue
-        uses: ./actions/auto-assign-copilot
+        uses: mudman1986/auto-assign-copilot-action@v1.1.0
         with:
           github-token: ${{ secrets.COPILOT_ASSIGN_PAT }}
+          mode: ${{ inputs.mode || 'auto' }}
 ```
 
-### Advanced Example
+### 2. Set Up Authentication
 
-```yaml
-- name: Assign Copilot to issue
-  uses: ./actions/auto-assign-copilot
-  with:
-    github-token: ${{ secrets.COPILOT_ASSIGN_PAT }}
-    mode: auto
-    label-override: "bug" # Only assign bug issues
-    force: false
-    dry-run: false
-    allow-parent-issues: false
-    skip-labels: "no-ai,refining,on-hold"
-    refactor-threshold: 4
+Create a Personal Access Token (PAT) from an account that has a GitHub Copilot license. The PAT requires the following permissions:
+- **Read access to metadata**
+- **Read and Write access to:**
+  - actions
+  - code
+  - issues
+  - pull requests
+
+Add the PAT to your repository secrets as `COPILOT_ASSIGN_PAT`.
+
+### 3. Deploy
+
+The action will autonomously assign issues to Copilot based on intelligent priority routing.
+
+---
+
+## Configuration
+
+### All Inputs
+
+| Input | Description | Required | Default |
+|-------|-------------|----------|---------|
+| **`github-token`** | PAT from an account with GitHub Copilot license (requires read access to metadata, read/write access to actions, code, issues, and pull requests) | ✅ Yes | - |
+| `mode` | Assignment mode: `auto` or `refactor` | No | `auto` |
+| `label-override` | Specific label to filter (auto mode only) | No | `""` |
+| `force` | Force assignment even if Copilot has issues | No | `false` |
+| `dry-run` | Preview mode - no actual changes | No | `false` |
+| `allow-parent-issues` | Allow issues with sub-issues | No | `false` |
+| `skip-labels` | Comma-separated labels to skip | No | `no-ai,refining` |
+| `refactor-threshold` | Closed issues to check for refactor (N in 1:N+1 ratio) | No | `4` |
+| `create-refactor-issue` | Whether to create new refactor issues | No | `true` |
+| `refactor-issue-template` | Path to custom refactor issue template | No | `.github/REFACTOR_ISSUE_TEMPLATE.md` |
+
+### Outputs
+
+| Output | Description |
+|--------|-------------|
+| `assigned-issue-number` | Issue number assigned to Copilot |
+| `assigned-issue-url` | Full URL of the assigned issue |
+| `assignment-mode` | Effective mode used (`auto` or `refactor`) |
+
+---
+
+## How It Works
+
+### Auto Mode (Default) - Intelligent Agent Orchestration
+
+```mermaid
+graph TD
+    A[Issue Closed] --> B{Agent has<br/>active task?}
+    B -->|Yes + force=false| C[Skip - Agent Busy]
+    B -->|No or force=true| D[Intelligent Priority Routing]
+    D --> E{Bug tasks?}
+    E -->|Yes| F[Assign Bug]
+    E -->|No| G{Documentation tasks?}
+    G -->|Yes| H[Assign Doc]
+    G -->|No| I{Refactor tasks?}
+    I -->|Yes| J[Assign Refactor]
+    I -->|No| K{Enhancement tasks?}
+    K -->|Yes| L[Assign Enhancement]
+    K -->|No| M{Any open task?}
+    M -->|Yes| N[Assign First Available]
+    M -->|No| O[Generate Refactor Task]
 ```
 
-## Inputs
+### Refactor Mode - Autonomous Task Generation
 
-| Input                 | Description                                                          | Required | Default          |
-| --------------------- | -------------------------------------------------------------------- | -------- | ---------------- |
-| `github-token`        | PAT token with `issues:write` permission, from an account with a GitHub Copilot license    | Yes      | N/A              |
-| `mode`                | Assignment mode: `auto` or `refactor`                                | No       | `auto`           |
-| `label-override`      | Priority label to filter by (auto mode only)                         | No       | `""`             |
-| `force`               | Force assignment even if Copilot already has an issue                | No       | `false`          |
-| `dry-run`             | Log what would be done without making changes                        | No       | `false`          |
-| `allow-parent-issues` | Allow assigning issues that have sub-issues                          | No       | `false`          |
-| `skip-labels`         | Comma-separated list of labels to skip                               | No       | `no-ai,refining` |
-| `refactor-threshold`  | Number of closed issues to check for refactor label (1 in N+1 ratio) | No       | `4`              |
+1. Search for existing unassigned refactor tasks
+2. Assign first available task to agent
+3. If none found → autonomously generate new refactor task (if enabled)
 
-## Outputs
+### Adaptive Refactor Ratio
 
-| Output                  | Description                                               |
-| ----------------------- | --------------------------------------------------------- |
-| `assigned-issue-number` | Number of the issue assigned to Copilot (empty if none)   |
-| `assigned-issue-url`    | URL of the issue assigned to Copilot (empty if none)      |
-| `assignment-mode`       | The effective mode used for assignment (auto or refactor) |
+After closing an issue, the system analyzes the last **N** closed issues (N = `refactor-threshold`):
+- If **none** have `refactor` label → autonomously switches to refactor mode
+- Maintains **1 in N+1** ratio (default: 1 in 5 issues) for balanced workload
 
-## Assignment Logic
-
-### Auto Mode
-
-1. Checks if Copilot already has an assigned issue (skips if true and `force=false`)
-2. Searches for unassigned issues by priority:
-   - bug
-   - documentation
-   - refactor
-   - enhancement
-3. Skips issues that:
-   - Are already assigned
-   - Have sub-issues (unless `allow-parent-issues=true`)
-   - Have labels in `skip-labels` list
-4. If no priority issues found, searches all open issues
-5. If no issues found, creates/assigns a refactor issue
-
-### Refactor Mode
-
-1. Searches for existing unassigned refactor issues
-2. Assigns the first available refactor issue
-3. If none found, creates a new refactor issue and assigns it
-
-### Refactor Ratio
-
-When an issue is closed, the action checks the last N closed issues (where N = `refactor-threshold`):
-
-- If none have the `refactor` label, switches to refactor mode
-- This ensures a 1 in N+1 ratio of refactor issues (default: 1 in 5)
-
-## Permissions
-
-The GitHub token must have the following permissions:
-
-```yaml
-permissions:
-  contents: read
-  issues: write
-```
-
-For private repositories or advanced features, use a Personal Access Token (PAT) or GitHub App token.
+---
 
 ## Examples
 
-### Manual Trigger with Options
+### Basic Usage
+
+```yaml
+# Minimal configuration
+- uses: mudman1986/auto-assign-copilot-action@v1.1.0
+  with:
+    github-token: ${{ secrets.COPILOT_ASSIGN_PAT }}
+```
+
+### Common Configurations
+
+```yaml
+# Bug priority only
+- uses: mudman1986/auto-assign-copilot-action@v1.1.0
+  with:
+    github-token: ${{ secrets.COPILOT_ASSIGN_PAT }}
+    label-override: "bug"
+
+# Force assignment (override existing assignments)
+- uses: mudman1986/auto-assign-copilot-action@v1.1.0
+  with:
+    github-token: ${{ secrets.COPILOT_ASSIGN_PAT }}
+    force: true
+
+# Dry run mode (preview without changes)
+- uses: mudman1986/auto-assign-copilot-action@v1.1.0
+  with:
+    github-token: ${{ secrets.COPILOT_ASSIGN_PAT }}
+    dry-run: true
+```
+
+### Advanced Configurations
+
+```yaml
+# Custom skip labels and allow parent issues
+- uses: mudman1986/auto-assign-copilot-action@v1.1.0
+  with:
+    github-token: ${{ secrets.COPILOT_ASSIGN_PAT }}
+    skip-labels: "no-ai,needs-review,on-hold"
+    allow-parent-issues: true
+
+# Custom refactor template
+- uses: mudman1986/auto-assign-copilot-action@v1.1.0
+  with:
+    github-token: ${{ secrets.COPILOT_ASSIGN_PAT }}
+    refactor-issue-template: ".github/templates/custom-refactor.md"
+
+# Disable automatic refactor creation
+- uses: mudman1986/auto-assign-copilot-action@v1.1.0
+  with:
+    github-token: ${{ secrets.COPILOT_ASSIGN_PAT }}
+    create-refactor-issue: false
+```
+
+### Manual Workflow Dispatch
 
 ```yaml
 on:
   workflow_dispatch:
     inputs:
       mode:
-        description: "Assignment mode"
-        required: true
-        default: "auto"
         type: choice
-        options:
-          - auto
-          - refactor
+        options: [auto, refactor]
+        default: "auto"
       dry_run:
-        description: "Dry run mode"
-        required: false
         type: boolean
         default: false
 
@@ -147,66 +264,145 @@ jobs:
   assign:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-
-      - name: Assign Copilot to issue
-        uses: ./actions/auto-assign-copilot
+      - uses: mudman1986/auto-assign-copilot-action@v1.1.0
         with:
           github-token: ${{ secrets.COPILOT_ASSIGN_PAT }}
           mode: ${{ inputs.mode }}
           dry-run: ${{ inputs.dry_run }}
 ```
 
-### Bug Priority Only
+---
 
-```yaml
-- name: Assign bug to Copilot
-  uses: ./actions/auto-assign-copilot
-  with:
-    github-token: ${{ secrets.COPILOT_ASSIGN_PAT }}
-    label-override: "bug"
+## Custom Agent Instructions via Templates
+
+Define agent behavior and task scope using a custom template file. Specify the template path using the `refactor-issue-template` input parameter (default: `.github/REFACTOR_ISSUE_TEMPLATE.md`).
+
+Example template content:
+
+```markdown
+Review the codebase and identify opportunities for improvement.
+
+## Suggested Areas to Review:
+
+- Code quality and maintainability
+- Test coverage and reliability
+- Documentation completeness
+- Performance optimizations
+- Security best practices
+- Code duplication
+- Error handling
+- Dependencies and updates
+
+## Guidelines:
+
+- Prioritize high-impact, low-risk improvements
+- Make focused, incremental changes
+- Run existing tests and linters before completing
+- Document any significant changes
+- Consider backward compatibility
+- **Delegate tasks to suitable agents** in the `.github/agents` folder when available
+
+**Note:** If the scope is too large for a single session, create additional issues with the `refactor` label for remaining work.
 ```
 
-### Allow Parent Issues
+---
 
-```yaml
-- name: Assign any issue to Copilot
-  uses: ./actions/auto-assign-copilot
-  with:
-    github-token: ${{ secrets.COPILOT_ASSIGN_PAT }}
-    allow-parent-issues: true
-```
+## Security
+
+### Path Validation
+
+The action implements strict security controls for file access:
+- Cross-platform path validation using `path.relative()`
+- Workspace-scoped access restrictions
+- Graceful fallback to default content on validation failures
+
+### Dependency Security
+
+- Production dependencies: **0 vulnerabilities**
+- Dev dependencies: Minimal vulnerabilities (semantic-release internal npm)
+- Automated security updates via Dependabot
+
+---
 
 ## Development
 
-### Build the Action
+### Prerequisites
+
+- Node.js 22+ (for development)
+- npm 10+
+
+### Build
 
 ```bash
-cd actions/auto-assign-copilot
 npm install
 npm run build
 ```
 
-This uses `@vercel/ncc` to compile the action into a single `dist/index.js` file with all dependencies bundled.
-
-### Testing
+### Test
 
 ```bash
 npm test
+npm test -- --coverage
 ```
 
-### Releases
+### Lint
 
-This project uses automated releases with semantic versioning. See [RELEASE.md](/RELEASE.md) for details on:
-- How versioning works
-- Writing commit messages for proper version bumping
-- The automated release process
-- Publishing to GitHub Marketplace
+```bash
+npx standard
+npx standard --fix  # Auto-fix issues
+```
 
-## License
+---
 
-MIT
+## Outputs Example
+
+```yaml
+- name: Assign issue
+  id: assign
+  uses: mudman1986/auto-assign-copilot-action@v1.1.0
+  with:
+    github-token: ${{ secrets.COPILOT_ASSIGN_PAT }}
+
+- name: Show results
+  run: |
+    echo "Assigned Issue: #${{ steps.assign.outputs.assigned-issue-number }}"
+    echo "Issue URL: ${{ steps.assign.outputs.assigned-issue-url }}"
+    echo "Mode: ${{ steps.assign.outputs.assignment-mode }}"
+```
+
+---
 
 ## Contributing
 
-Contributions are welcome! Please see [MIGRATION.md](MIGRATION.md) for instructions on transferring this action to another repository.
+Contributions are welcome! Please:
+
+1. Fork the repository
+2. Create a feature branch
+3. Make your changes
+4. Add/update tests
+5. Submit a pull request
+
+See [CONTRIBUTING.md](CONTRIBUTING.md) for detailed guidelines.
+
+---
+
+## License
+
+MIT © [mudman1986](https://github.com/mudman1986)
+
+---
+
+## Links
+
+- [Releases](https://github.com/mudman1986/auto-assign-copilot-action/releases)
+- [Issues](https://github.com/mudman1986/auto-assign-copilot-action/issues)
+- [Release Documentation](RELEASE.md)
+- [Security Policy](SECURITY.md)
+
+---
+
+<div align="center">
+
+**Autonomous AI Agent Orchestration for GitHub Copilot**
+
+</div>

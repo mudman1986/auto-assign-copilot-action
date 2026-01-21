@@ -110,7 +110,8 @@ describe('Workflow executeWorkflow', () => {
         allowParentIssues: false,
         skipLabels: ['no-ai'],
         refactorThreshold: 4,
-        createRefactorIssue: true
+        createRefactorIssue: true,
+        refactorIssueTemplate: '.github/REFACTOR_ISSUE_TEMPLATE.md'
       })
 
       // Should return issue data even in dry-run
@@ -212,7 +213,8 @@ describe('Workflow executeWorkflow', () => {
         allowParentIssues: false,
         skipLabels: ['no-ai'],
         refactorThreshold: 4,
-        createRefactorIssue: true
+        createRefactorIssue: true,
+        refactorIssueTemplate: '.github/REFACTOR_ISSUE_TEMPLATE.md'
       })
 
       // Should return issue data even in dry-run
@@ -291,7 +293,8 @@ describe('Workflow executeWorkflow', () => {
         allowParentIssues: false,
         skipLabels: ['no-ai'],
         refactorThreshold: 4,
-        createRefactorIssue: true
+        createRefactorIssue: true,
+        refactorIssueTemplate: '.github/REFACTOR_ISSUE_TEMPLATE.md'
       })
 
       // Should return mock issue data even in dry-run
@@ -322,7 +325,8 @@ describe('Workflow executeWorkflow', () => {
         allowParentIssues: false,
         skipLabels: ['no-ai'],
         refactorThreshold: 4,
-        createRefactorIssue: true
+        createRefactorIssue: true,
+        refactorIssueTemplate: '.github/REFACTOR_ISSUE_TEMPLATE.md'
       })
 
       // Verify no mutations were called
@@ -415,7 +419,8 @@ describe('Workflow executeWorkflow', () => {
         allowParentIssues: false,
         skipLabels: ['no-ai'],
         refactorThreshold: 4,
-        createRefactorIssue: true
+        createRefactorIssue: true,
+        refactorIssueTemplate: '.github/REFACTOR_ISSUE_TEMPLATE.md'
       })
 
       // Should return issue data
@@ -485,7 +490,8 @@ describe('Workflow executeWorkflow', () => {
         allowParentIssues: false,
         skipLabels: ['no-ai'],
         refactorThreshold: 4,
-        createRefactorIssue: false
+        createRefactorIssue: false,
+        refactorIssueTemplate: '.github/REFACTOR_ISSUE_TEMPLATE.md'
       })
 
       // Should return undefined/null since no issue was created
@@ -585,7 +591,8 @@ describe('Workflow executeWorkflow', () => {
         allowParentIssues: false,
         skipLabels: ['no-ai'],
         refactorThreshold: 4,
-        createRefactorIssue: true
+        createRefactorIssue: true,
+        refactorIssueTemplate: '.github/REFACTOR_ISSUE_TEMPLATE.md'
       })
 
       // Should return the created issue
@@ -661,7 +668,8 @@ describe('Workflow executeWorkflow', () => {
         allowParentIssues: false,
         skipLabels: ['no-ai'],
         refactorThreshold: 4,
-        createRefactorIssue: false
+        createRefactorIssue: false,
+        refactorIssueTemplate: '.github/REFACTOR_ISSUE_TEMPLATE.md'
       })
 
       // Should return undefined/null since no issue was created
@@ -751,7 +759,8 @@ describe('Workflow executeWorkflow', () => {
         allowParentIssues: false,
         skipLabels: ['no-ai'],
         refactorThreshold: 4,
-        createRefactorIssue: false
+        createRefactorIssue: false,
+        refactorIssueTemplate: '.github/REFACTOR_ISSUE_TEMPLATE.md'
       })
 
       // Should return the existing refactor issue
