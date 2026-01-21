@@ -167,68 +167,51 @@ After closing an issue, the system analyzes the last **N** closed issues (N = `r
 ### Basic Usage
 
 ```yaml
+# Minimal configuration
 - uses: mudman1986/auto-assign-copilot-action@v1.1.0
   with:
     github-token: ${{ secrets.COPILOT_ASSIGN_PAT }}
 ```
 
-### Bug Priority Only
+### Common Configurations
 
 ```yaml
+# Bug priority only
 - uses: mudman1986/auto-assign-copilot-action@v1.1.0
   with:
     github-token: ${{ secrets.COPILOT_ASSIGN_PAT }}
     label-override: "bug"
-```
 
-### Force Assignment
-
-```yaml
+# Force assignment (override existing assignments)
 - uses: mudman1986/auto-assign-copilot-action@v1.1.0
   with:
     github-token: ${{ secrets.COPILOT_ASSIGN_PAT }}
     force: true
-```
 
-### Custom Skip Labels
-
-```yaml
-- uses: mudman1986/auto-assign-copilot-action@v1.1.0
-  with:
-    github-token: ${{ secrets.COPILOT_ASSIGN_PAT }}
-    skip-labels: "no-ai,needs-review,on-hold"
-```
-
-### Allow Parent Issues
-
-```yaml
-- uses: mudman1986/auto-assign-copilot-action@v1.1.0
-  with:
-    github-token: ${{ secrets.COPILOT_ASSIGN_PAT }}
-    allow-parent-issues: true
-```
-
-### Dry Run (Preview)
-
-```yaml
+# Dry run mode (preview without changes)
 - uses: mudman1986/auto-assign-copilot-action@v1.1.0
   with:
     github-token: ${{ secrets.COPILOT_ASSIGN_PAT }}
     dry-run: true
 ```
 
-### Custom Refactor Template
+### Advanced Configurations
 
 ```yaml
+# Custom skip labels and allow parent issues
+- uses: mudman1986/auto-assign-copilot-action@v1.1.0
+  with:
+    github-token: ${{ secrets.COPILOT_ASSIGN_PAT }}
+    skip-labels: "no-ai,needs-review,on-hold"
+    allow-parent-issues: true
+
+# Custom refactor template
 - uses: mudman1986/auto-assign-copilot-action@v1.1.0
   with:
     github-token: ${{ secrets.COPILOT_ASSIGN_PAT }}
     refactor-issue-template: ".github/templates/custom-refactor.md"
-```
 
-### Disable Refactor Creation
-
-```yaml
+# Disable automatic refactor creation
 - uses: mudman1986/auto-assign-copilot-action@v1.1.0
   with:
     github-token: ${{ secrets.COPILOT_ASSIGN_PAT }}
@@ -242,14 +225,10 @@ on:
   workflow_dispatch:
     inputs:
       mode:
-        description: "Assignment mode"
         type: choice
-        options:
-          - auto
-          - refactor
+        options: [auto, refactor]
         default: "auto"
       dry_run:
-        description: "Dry run mode"
         type: boolean
         default: false
 
