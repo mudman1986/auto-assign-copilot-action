@@ -1,3 +1,5 @@
+name: auto assign copilot
+
 on:
   # Daily schedule to ensure Copilot always has work
   schedule:
