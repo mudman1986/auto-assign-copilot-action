@@ -16,5 +16,8 @@ Thumbs.db
 .vscode/
 .idea/
 
+# Semantic Release
+CHANGELOG.md
+
 # DO NOT ignore dist/ - it's required for the action to work
 # dist/

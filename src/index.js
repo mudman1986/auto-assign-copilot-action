@@ -24,6 +24,7 @@ async function run () {
     const skipLabelsRaw = core.getInput('skip-labels') || 'no-ai,refining'
     const refactorThresholdRaw = core.getInput('refactor-threshold') || '4'
     const refactorThreshold = parseInt(refactorThresholdRaw, 10)
+    const createRefactorIssue = core.getInput('create-refactor-issue') === 'true'
 
     // Parse skip labels from comma-separated string
     const skipLabels = skipLabelsRaw
@@ -38,6 +39,7 @@ async function run () {
   dryRun: ${dryRun}
   allowParentIssues: ${allowParentIssues}
   refactorThreshold: ${refactorThreshold}
+  createRefactorIssue: ${createRefactorIssue}
   skipLabels: ${JSON.stringify(skipLabels)}`)
 
     // Create authenticated Octokit client
@@ -56,7 +58,8 @@ async function run () {
       dryRun,
       allowParentIssues,
       skipLabels,
-      refactorThreshold
+      refactorThreshold,
+      createRefactorIssue
     })
 
     // Set outputs
