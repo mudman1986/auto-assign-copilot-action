@@ -290,8 +290,8 @@ describe('Auto Assign Copilot Helpers', () => {
       jest.spyOn(fs, 'existsSync').mockReturnValue(false)
 
       const result = helpers.readRefactorIssueTemplate('.github/REFACTOR_ISSUE_TEMPLATE.md')
-      expect(result).toContain('Review the codebase and make improvements')
-      expect(result).toContain('Refactor duplicate code')
+      expect(result).toContain('Review the codebase and identify opportunities')
+      expect(result).toContain('Code quality and maintainability')
       expect(fs.existsSync).toHaveBeenCalled()
     })
 
@@ -303,8 +303,8 @@ describe('Auto Assign Copilot Helpers', () => {
       })
 
       const result = helpers.readRefactorIssueTemplate('.github/REFACTOR_ISSUE_TEMPLATE.md')
-      expect(result).toContain('Review the codebase and make improvements')
-      expect(result).toContain('Refactor duplicate code')
+      expect(result).toContain('Review the codebase and identify opportunities')
+      expect(result).toContain('Code quality and maintainability')
     })
 
     test('should resolve path relative to GITHUB_WORKSPACE', () => {
@@ -330,7 +330,7 @@ describe('Auto Assign Copilot Helpers', () => {
       const result = helpers.readRefactorIssueTemplate('../../etc/passwd')
 
       // Should return default content and not attempt to read the file
-      expect(result).toContain('Review the codebase and make improvements')
+      expect(result).toContain('Review the codebase and identify opportunities')
     })
   })
 })

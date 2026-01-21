@@ -193,22 +193,28 @@ function findAvailableRefactorIssue (
  */
 function readRefactorIssueTemplate (templatePath) {
   const defaultContent = [
-    'Review the codebase and make improvements:',
+    'Review the codebase and identify opportunities for improvement.',
     '',
-    '- Fix failing tests (superlinter, ci, ui tests)',
-    '- Refactor duplicate code',
-    '- Address security vulnerabilities',
-    '- Improve code maintainability and performance',
-    '- Enhance UI accessibility',
-    '- Increase test coverage',
+    '## Suggested Areas to Review:',
     '',
-    '**Rules:**',
-    '- Assign tasks to all available specialized agents in the repository (e.g., UI/UX Specialist, Test Runner, Code Review, etc.)',
-    '- Make minimal surgical changes, run all linters/tests before completing.',
-    '- **If work is too extensive to complete in one session:**',
-    '  - Create GitHub issues with the `refactor` label for remaining work',
-    '  - Each issue should have clear description, acceptance criteria, and code examples',
-    '  - Focus on completing critical fixes first, defer medium-priority items to issues'
+    '- Code quality and maintainability',
+    '- Test coverage and reliability',
+    '- Documentation completeness',
+    '- Performance optimizations',
+    '- Security best practices',
+    '- Code duplication',
+    '- Error handling',
+    '- Dependencies and updates',
+    '',
+    '## Guidelines:',
+    '',
+    '- Prioritize high-impact, low-risk improvements',
+    '- Make focused, incremental changes',
+    '- Run existing tests and linters before completing',
+    '- Document any significant changes',
+    '- Consider backward compatibility',
+    '',
+    '**Note:** If the scope is too large for a single session, create additional issues with the `refactor` label for remaining work.'
   ].join('\n')
 
   try {
