@@ -19,9 +19,9 @@ inputs:
     required: false
     default: ""
   required-label:
-    description: "Label that must be present on an issue before it is eligible for auto-assignment. Only users with write access can add labels, providing access control. Leave empty to disable this security feature."
+    description: "Label that must be present on an issue before it is eligible for auto-assignment. Only users with write access can add labels, providing access control. Set to empty string to disable this security feature."
     required: false
-    default: ""
+    default: "copilot-approved"
   force:
     description: "Force assignment even if Copilot already has an issue assigned"
     required: false
