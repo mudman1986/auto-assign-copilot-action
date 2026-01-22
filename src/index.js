@@ -24,7 +24,7 @@ async function run () {
     const skipLabelsRaw = core.getInput('skip-labels') || 'no-ai,refining'
     const refactorThreshold = parseInt(core.getInput('refactor-threshold') || '4', 10)
     const createRefactorIssue = core.getInput('create-refactor-issue') !== 'false'
-    const refactorIssueTemplate = core.getInput('refactor-issue-template') || '.github/REFACTOR_ISSUE_TEMPLATE.md'
+    const refactorIssueTemplate = core.getInput('refactor-issue-template') || ''
     const waitSeconds = parseInt(core.getInput('wait-seconds') || '300', 10)
 
     // Parse skip labels from comma-separated string

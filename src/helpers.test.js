@@ -274,6 +274,19 @@ describe('Auto Assign Copilot Helpers', () => {
       expect(fs.existsSync).toHaveBeenCalled()
     })
 
+    test('should return default content when no template path is provided', () => {
+      // Mock file system methods using jest.spyOn
+      const existsSpy = jest.spyOn(fs, 'existsSync')
+      const readSpy = jest.spyOn(fs, 'readFileSync')
+
+      const result = helpers.readRefactorIssueTemplate('')
+      expect(result).toContain('Review the codebase and identify opportunities')
+      expect(result).toContain('Code quality and maintainability')
+      // Should not attempt to read file when no path provided
+      expect(existsSpy).not.toHaveBeenCalled()
+      expect(readSpy).not.toHaveBeenCalled()
+    })
+
     test('should return default content when reading template fails', () => {
       // Mock file system methods to throw error using jest.spyOn
       jest.spyOn(fs, 'existsSync').mockReturnValue(true)

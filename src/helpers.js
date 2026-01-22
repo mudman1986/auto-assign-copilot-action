@@ -176,7 +176,7 @@ function findAvailableRefactorIssue (
 /**
  * Read the content of the refactor issue template file
  * @param {string} templatePath - Path to the template file (relative to workspace root)
- * @returns {string} - Template content or default content if file doesn't exist
+ * @returns {string} - Template content or default content if file doesn't exist or path is empty
  */
 function readRefactorIssueTemplate (templatePath) {
   const defaultContent = [
@@ -204,6 +204,12 @@ function readRefactorIssueTemplate (templatePath) {
     '',
     '**Note:** If the scope is too large for a single session, create additional issues with the `refactor` label for remaining work.'
   ].join('\n')
+
+  // If no template path provided, use default content
+  if (!templatePath || templatePath.trim() === '') {
+    console.log('No custom template path provided, using default content')
+    return defaultContent
+  }
 
   try {
     // Resolve the template path relative to the workspace
