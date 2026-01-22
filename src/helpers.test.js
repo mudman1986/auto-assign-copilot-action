@@ -355,4 +355,197 @@ describe('Auto Assign Copilot Helpers', () => {
       expect(result).toContain('Review the codebase and identify opportunities')
     })
   })
+
+  describe('isAutoCreatedRefactorIssue', () => {
+    test('should return true for auto-created issues with [AUTO] marker', () => {
+      const issue = {
+        title: 'refactor: codebase improvements [AUTO] - 2024-01-01T00:00:00.000Z'
+      }
+      expect(helpers.isAutoCreatedRefactorIssue(issue)).toBe(true)
+    })
+
+    test('should return false for manually created issues without [AUTO] marker', () => {
+      const issue = {
+        title: 'refactor: codebase improvements'
+      }
+      expect(helpers.isAutoCreatedRefactorIssue(issue)).toBe(false)
+    })
+
+    test('should return false for issues with no title', () => {
+      const issue = {}
+      expect(helpers.isAutoCreatedRefactorIssue(issue)).toBe(false)
+    })
+
+    test('should handle case where title is null', () => {
+      const issue = { title: null }
+      expect(helpers.isAutoCreatedRefactorIssue(issue)).toBe(false)
+    })
+  })
+
+  describe('shouldWaitForCooldown', () => {
+    test('should not wait when no closed issues', () => {
+      const result = helpers.shouldWaitForCooldown([], 7)
+      expect(result.shouldWait).toBe(false)
+      expect(result.reason).toBe('No closed issues found')
+    })
+
+    test('should not wait when no auto-created refactor issue found', () => {
+      const issues = [
+        {
+          title: 'refactor: manual refactor',
+          closedAt: new Date().toISOString(),
+          labels: { nodes: [{ name: 'refactor' }] }
+        },
+        {
+          title: 'bug: fix something',
+          closedAt: new Date().toISOString(),
+          labels: { nodes: [{ name: 'bug' }] }
+        }
+      ]
+      const result = helpers.shouldWaitForCooldown(issues, 7)
+      expect(result.shouldWait).toBe(false)
+      expect(result.reason).toContain('No auto-created refactor issue found')
+    })
+
+    test('should wait when auto-created refactor issue was closed within cooldown period', () => {
+      const threeDaysAgo = new Date()
+      threeDaysAgo.setDate(threeDaysAgo.getDate() - 3)
+
+      const issues = [
+        {
+          number: 42,
+          title: 'refactor: codebase improvements [AUTO] - 2024-01-01',
+          closedAt: threeDaysAgo.toISOString(),
+          labels: { nodes: [{ name: 'refactor' }] }
+        }
+      ]
+      const result = helpers.shouldWaitForCooldown(issues, 7)
+      expect(result.shouldWait).toBe(true)
+      expect(result.reason).toContain('Wait')
+      expect(result.reason).toContain('day')
+    })
+
+    test('should not wait when cooldown period has passed', () => {
+      const tenDaysAgo = new Date()
+      tenDaysAgo.setDate(tenDaysAgo.getDate() - 10)
+
+      const issues = [
+        {
+          number: 42,
+          title: 'refactor: codebase improvements [AUTO] - 2024-01-01',
+          closedAt: tenDaysAgo.toISOString(),
+          labels: { nodes: [{ name: 'refactor' }] }
+        }
+      ]
+      const result = helpers.shouldWaitForCooldown(issues, 7)
+      expect(result.shouldWait).toBe(false)
+      expect(result.reason).toContain('No auto-created refactor issue found')
+    })
+
+    test('should check all issues, not just the most recent one', () => {
+      const oneDayAgo = new Date()
+      oneDayAgo.setDate(oneDayAgo.getDate() - 1)
+
+      const tenDaysAgo = new Date()
+      tenDaysAgo.setDate(tenDaysAgo.getDate() - 10)
+
+      // Most recent issue is manual, but there's an auto-created one from 1 day ago
+      const issues = [
+        {
+          number: 43,
+          title: 'refactor: manual refactor',
+          closedAt: oneDayAgo.toISOString(),
+          labels: { nodes: [{ name: 'refactor' }] }
+        },
+        {
+          number: 44,
+          title: 'bug: some bug',
+          closedAt: oneDayAgo.toISOString(),
+          labels: { nodes: [{ name: 'bug' }] }
+        },
+        {
+          number: 42,
+          title: 'refactor: codebase improvements [AUTO] - 2024-01-01',
+          closedAt: oneDayAgo.toISOString(),
+          labels: { nodes: [{ name: 'refactor' }] }
+        },
+        {
+          number: 41,
+          title: 'refactor: old auto [AUTO] - 2024-01-01',
+          closedAt: tenDaysAgo.toISOString(),
+          labels: { nodes: [{ name: 'refactor' }] }
+        }
+      ]
+      const result = helpers.shouldWaitForCooldown(issues, 7)
+      expect(result.shouldWait).toBe(true)
+      expect(result.reason).toContain('Wait')
+    })
+
+    test('should ignore auto-created refactor issues outside cooldown period', () => {
+      const oneDayAgo = new Date()
+      oneDayAgo.setDate(oneDayAgo.getDate() - 1)
+
+      const tenDaysAgo = new Date()
+      tenDaysAgo.setDate(tenDaysAgo.getDate() - 10)
+
+      const issues = [
+        {
+          number: 43,
+          title: 'refactor: manual refactor',
+          closedAt: oneDayAgo.toISOString(),
+          labels: { nodes: [{ name: 'refactor' }] }
+        },
+        {
+          number: 42,
+          title: 'refactor: codebase improvements [AUTO] - 2024-01-01',
+          closedAt: tenDaysAgo.toISOString(),
+          labels: { nodes: [{ name: 'refactor' }] }
+        }
+      ]
+      const result = helpers.shouldWaitForCooldown(issues, 7)
+      expect(result.shouldWait).toBe(false)
+      expect(result.reason).toContain('No auto-created refactor issue found')
+    })
+
+    test('should use custom cooldown days', () => {
+      const twoDaysAgo = new Date()
+      twoDaysAgo.setDate(twoDaysAgo.getDate() - 2)
+
+      const issues = [
+        {
+          number: 42,
+          title: 'refactor: codebase improvements [AUTO] - 2024-01-01',
+          closedAt: twoDaysAgo.toISOString(),
+          labels: { nodes: [{ name: 'refactor' }] }
+        }
+      ]
+
+      // With 1 day cooldown, should not wait (2 days > 1 day)
+      const result1 = helpers.shouldWaitForCooldown(issues, 1)
+      expect(result1.shouldWait).toBe(false)
+
+      // With 5 day cooldown, should wait (2 days < 5 days)
+      const result2 = helpers.shouldWaitForCooldown(issues, 5)
+      expect(result2.shouldWait).toBe(true)
+    })
+
+    test('should not wait when cooldown is set to 0 (disabled)', () => {
+      const oneDayAgo = new Date()
+      oneDayAgo.setDate(oneDayAgo.getDate() - 1)
+
+      const issues = [
+        {
+          number: 42,
+          title: 'refactor: codebase improvements [AUTO] - 2024-01-01',
+          closedAt: oneDayAgo.toISOString(),
+          labels: { nodes: [{ name: 'refactor' }] }
+        }
+      ]
+
+      // With 0 day cooldown, should never wait (cooldown disabled)
+      const result = helpers.shouldWaitForCooldown(issues, 0)
+      expect(result.shouldWait).toBe(false)
+      expect(result.reason).toContain('No auto-created refactor issue found')
+    })
+  })
 })

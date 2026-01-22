@@ -3,7 +3,7 @@
 # Auto Assign Copilot to Issues
 
 [![GitHub release](https://img.shields.io/github/v/release/mudman1986/auto-assign-copilot-action)](https://github.com/mudman1986/auto-assign-copilot-action/releases)
-[![CI Tests](https://github.com/mudman1986/auto-assign-copilot-action/workflows/ci%20tests/badge.svg?branch=main)](https://github.com/mudman1986/auto-assign-copilot-action/actions)
+[![ci tests](https://github.com/mudman1986/auto-assign-copilot-action/actions/workflows/ci-tests.yml/badge.svg?branch=main)](https://github.com/mudman1986/auto-assign-copilot-action/actions/workflows/ci-tests.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
 **Autonomous agent orchestration for GitHub Copilot - intelligent, priority-based issue assignment**
@@ -89,7 +89,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Assign Copilot to issue
-        uses: mudman1986/auto-assign-copilot-action@v1.1.0
+        uses: mudman1986/auto-assign-copilot-action@v1.3.2
         with:
           github-token: ${{ secrets.COPILOT_ASSIGN_PAT }}
           mode: ${{ inputs.mode || 'auto' }}
@@ -131,6 +131,7 @@ The action will autonomously assign issues to Copilot based on intelligent prior
 | `create-refactor-issue` | Whether to create new refactor issues | No | `true` |
 | `refactor-issue-template` | Path to custom refactor issue template (requires checkout step) | No | None (uses built-in default) |
 | `wait-seconds` | Grace period in seconds before assignment for issue events (schedule/dispatch triggers proceed immediately) | No | `300` |
+| `refactor-cooldown-days` | Days to wait before creating a new auto-created refactor issue if any auto-created refactor issue was closed within this timeframe. Set to 0 to disable cooldown | No | `7` |
 
 ### Outputs
 
@@ -177,13 +178,23 @@ graph TD
 
 1. Search for existing unassigned refactor tasks
 2. Assign first available task to agent
-3. If none found → autonomously generate new refactor task (if enabled)
+3. If none found → autonomously generate new refactor task (if enabled and cooldown period has passed)
 
 ### Adaptive Refactor Ratio
 
 After closing an issue, the system analyzes the last **N** closed issues (N = `refactor-threshold`):
 - If **none** have `refactor` label → autonomously switches to refactor mode
 - Maintains **1 in N+1** ratio (default: 1 in 5 issues) for balanced workload
+
+### Refactor Issue Cooldown
+
+To prevent creating too many auto-generated refactor issues in rapid succession:
+- Auto-created refactor issues are marked with `[AUTO]` in the title
+- The system checks if any auto-created refactor issue was closed within the cooldown period (default: 7 days)
+- If an auto-created refactor issue was closed within the cooldown period, the system waits before creating another one
+- Manually created refactor issues (without `[AUTO]` marker) are not subject to this cooldown
+- This prevents loops where closing a refactor issue immediately creates a new one
+- The cooldown only applies to auto-created issues; manually assigned refactor issues can still be assigned at any time
 
 ---
 
@@ -193,7 +204,7 @@ After closing an issue, the system analyzes the last **N** closed issues (N = `r
 
 ```yaml
 # Minimal configuration
-- uses: mudman1986/auto-assign-copilot-action@v1.1.0
+- uses: mudman1986/auto-assign-copilot-action@v1.3.2
   with:
     github-token: ${{ secrets.COPILOT_ASSIGN_PAT }}
 ```
@@ -202,19 +213,19 @@ After closing an issue, the system analyzes the last **N** closed issues (N = `r
 
 ```yaml
 # Bug priority only
-- uses: mudman1986/auto-assign-copilot-action@v1.1.0
+- uses: mudman1986/auto-assign-copilot-action@v1.3.2
   with:
     github-token: ${{ secrets.COPILOT_ASSIGN_PAT }}
     label-override: "bug"
 
 # Force assignment (override existing assignments)
-- uses: mudman1986/auto-assign-copilot-action@v1.1.0
+- uses: mudman1986/auto-assign-copilot-action@v1.3.2
   with:
     github-token: ${{ secrets.COPILOT_ASSIGN_PAT }}
     force: true
 
 # Dry run mode (preview without changes)
-- uses: mudman1986/auto-assign-copilot-action@v1.1.0
+- uses: mudman1986/auto-assign-copilot-action@v1.3.2
   with:
     github-token: ${{ secrets.COPILOT_ASSIGN_PAT }}
     dry-run: true
@@ -224,20 +235,20 @@ After closing an issue, the system analyzes the last **N** closed issues (N = `r
 
 ```yaml
 # Custom skip labels and allow parent issues
-- uses: mudman1986/auto-assign-copilot-action@v1.1.0
+- uses: mudman1986/auto-assign-copilot-action@v1.3.2
   with:
     github-token: ${{ secrets.COPILOT_ASSIGN_PAT }}
     skip-labels: "no-ai,needs-review,on-hold"
     allow-parent-issues: true
 
 # Custom grace period (10 minutes)
-- uses: mudman1986/auto-assign-copilot-action@v1.1.0
+- uses: mudman1986/auto-assign-copilot-action@v1.3.2
   with:
     github-token: ${{ secrets.COPILOT_ASSIGN_PAT }}
     wait-seconds: '600'  # 10 minutes wait for issue events
 
 # No grace period (immediate assignment)
-- uses: mudman1986/auto-assign-copilot-action@v1.1.0
+- uses: mudman1986/auto-assign-copilot-action@v1.3.2
   with:
     github-token: ${{ secrets.COPILOT_ASSIGN_PAT }}
     wait-seconds: '0'  # Assign immediately even for issue events
@@ -247,16 +258,28 @@ After closing an issue, the system analyzes the last **N** closed issues (N = `r
   uses: actions/checkout@v4
 
 - name: Use custom refactor template
-  uses: mudman1986/auto-assign-copilot-action@v1.1.0
+  uses: mudman1986/auto-assign-copilot-action@v1.3.2
   with:
     github-token: ${{ secrets.COPILOT_ASSIGN_PAT }}
     refactor-issue-template: ".github/templates/custom-refactor.md"
 
 # Disable automatic refactor creation
-- uses: mudman1986/auto-assign-copilot-action@v1.1.0
+- uses: mudman1986/auto-assign-copilot-action@v1.3.2
   with:
     github-token: ${{ secrets.COPILOT_ASSIGN_PAT }}
     create-refactor-issue: false
+
+# Custom refactor cooldown (14 days instead of default 7)
+- uses: mudman1986/auto-assign-copilot-action@v1.3.2
+  with:
+    github-token: ${{ secrets.COPILOT_ASSIGN_PAT }}
+    refactor-cooldown-days: '14'
+
+# Disable refactor cooldown (allow immediate creation)
+- uses: mudman1986/auto-assign-copilot-action@v1.3.2
+  with:
+    github-token: ${{ secrets.COPILOT_ASSIGN_PAT }}
+    refactor-cooldown-days: '0'
 ```
 
 ### Manual Workflow Dispatch
@@ -277,7 +300,7 @@ jobs:
   assign:
     runs-on: ubuntu-latest
     steps:
-      - uses: mudman1986/auto-assign-copilot-action@v1.1.0
+      - uses: mudman1986/auto-assign-copilot-action@v1.3.2
         with:
           github-token: ${{ secrets.COPILOT_ASSIGN_PAT }}
           mode: ${{ inputs.mode }}
@@ -299,7 +322,7 @@ Example workflow:
   uses: actions/checkout@v4
 
 - name: Assign Copilot with custom template
-  uses: mudman1986/auto-assign-copilot-action@v1.1.0
+  uses: mudman1986/auto-assign-copilot-action@v1.3.2
   with:
     github-token: ${{ secrets.COPILOT_ASSIGN_PAT }}
     refactor-issue-template: ".github/templates/custom-refactor.md"
@@ -387,7 +410,7 @@ npx standard --fix  # Auto-fix issues
 ```yaml
 - name: Assign issue
   id: assign
-  uses: mudman1986/auto-assign-copilot-action@v1.1.0
+  uses: mudman1986/auto-assign-copilot-action@v1.3.2
   with:
     github-token: ${{ secrets.COPILOT_ASSIGN_PAT }}
 

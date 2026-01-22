@@ -26,6 +26,7 @@ async function run () {
     const createRefactorIssue = core.getInput('create-refactor-issue') !== 'false'
     const refactorIssueTemplate = core.getInput('refactor-issue-template') || ''
     const waitSeconds = parseInt(core.getInput('wait-seconds') || '300', 10)
+    const refactorCooldownDays = parseInt(core.getInput('refactor-cooldown-days') || '7', 10)
 
     // Parse skip labels from comma-separated string
     const skipLabels = skipLabelsRaw
@@ -54,7 +55,8 @@ async function run () {
       refactorThreshold,
       createRefactorIssue,
       refactorIssueTemplate,
-      waitSeconds
+      waitSeconds,
+      refactorCooldownDays
     })
 
     // Set outputs

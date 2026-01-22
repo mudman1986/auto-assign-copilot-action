@@ -35453,6 +35453,9 @@ function wrappy (fn, cb) {
 const fs = __nccwpck_require__(9896)
 const path = __nccwpck_require__(6928)
 
+// Constants
+const MS_PER_DAY = 1000 * 60 * 60 * 24
+
 /**
  * Check if an issue should be skipped for assignment
  * @param {Object} issue - Issue object from parseIssueData
@@ -35687,6 +35690,62 @@ function readRefactorIssueTemplate (templatePath) {
   }
 }
 
+/**
+ * Check if an issue was auto-created by this action
+ * Auto-created issues have [AUTO] in their title
+ * @param {Object} issue - Issue object
+ * @returns {boolean} - True if issue was auto-created
+ */
+function isAutoCreatedRefactorIssue (issue) {
+  return issue?.title?.includes('[AUTO]') ?? false
+}
+
+/**
+ * Check if an auto-created refactor issue was closed within the cooldown period
+ * @param {Array} closedIssues - Array of recently closed issues
+ * @param {number} cooldownDays - Number of days to wait
+ * @returns {Object} - {shouldWait: boolean, reason: string}
+ */
+function shouldWaitForCooldown (closedIssues, cooldownDays = 7) {
+  if (!closedIssues || closedIssues.length === 0) {
+    return { shouldWait: false, reason: 'No closed issues found' }
+  }
+
+  const now = new Date()
+  const cooldownMs = cooldownDays * MS_PER_DAY
+
+  // Find any auto-created refactor issue closed within the cooldown period
+  const recentAutoCreatedRefactor = closedIssues.find((issue) => {
+    const labels = normalizeIssueLabels(issue)
+    const hasRefactorLabel = labels.some((label) => label.name === 'refactor')
+
+    if (!hasRefactorLabel || !isAutoCreatedRefactorIssue(issue)) {
+      return false
+    }
+
+    // Check if it was closed within the cooldown period
+    const closedAt = new Date(issue.closedAt)
+    const timeSinceClosed = now - closedAt
+    return timeSinceClosed < cooldownMs
+  })
+
+  if (recentAutoCreatedRefactor) {
+    const closedAt = new Date(recentAutoCreatedRefactor.closedAt)
+    const daysSinceClosed = Math.floor((now - closedAt) / MS_PER_DAY)
+    const daysRemaining = Math.ceil(cooldownDays - daysSinceClosed)
+
+    return {
+      shouldWait: true,
+      reason: `Auto-created refactor issue #${recentAutoCreatedRefactor.number} was closed ${daysSinceClosed} days ago. Wait ${daysRemaining} more day(s) before creating a new one.`
+    }
+  }
+
+  return {
+    shouldWait: false,
+    reason: 'No auto-created refactor issue found closed within the cooldown period'
+  }
+}
+
 module.exports = {
   shouldSkipIssue,
   shouldAssignNewIssue,
@@ -35695,7 +35754,9 @@ module.exports = {
   normalizeIssueLabels,
   hasRecentRefactorIssue,
   findAvailableRefactorIssue,
-  readRefactorIssueTemplate
+  readRefactorIssueTemplate,
+  isAutoCreatedRefactorIssue,
+  shouldWaitForCooldown
 }
 
 
@@ -35722,6 +35783,7 @@ module.exports = {
  * @param {boolean} params.createRefactorIssue - Whether to create new refactor issues
  * @param {string} params.refactorIssueTemplate - Path to the refactor issue template file
  * @param {number} params.waitSeconds - Number of seconds to wait for issue events (default: 0)
+ * @param {number} params.refactorCooldownDays - Number of days to wait before creating a new auto-created refactor issue (default: 7)
  */
 module.exports = async ({
   github,
@@ -35735,7 +35797,8 @@ module.exports = async ({
   refactorThreshold,
   createRefactorIssue,
   refactorIssueTemplate,
-  waitSeconds = 0
+  waitSeconds = 0,
+  refactorCooldownDays = 7
 }) => {
   const helpers = __nccwpck_require__(6636)
 
@@ -36058,6 +36121,43 @@ module.exports = async ({
    * Create a refactor issue
    */
   async function createRefactorIssueFunc () {
+    // Check cooldown period before creating a new auto-created refactor issue
+    console.log('Checking cooldown period for auto-created refactor issues...')
+
+    // Fetch recent closed issues to check for cooldown
+    const recentClosedResponse = await github.graphql(
+      `
+        query($owner: String!, $repo: String!) {
+          repository(owner: $owner, name: $repo) {
+            issues(first: 20, states: CLOSED, orderBy: {field: UPDATED_AT, direction: DESC}) {
+              nodes {
+                number
+                title
+                closedAt
+                labels(first: 10) {
+                  nodes { name }
+                }
+              }
+            }
+          }
+        }
+      `,
+      repoVars
+    )
+
+    const recentClosed = recentClosedResponse.repository.issues.nodes
+    const { shouldWait, reason } = helpers.shouldWaitForCooldown(
+      recentClosed,
+      refactorCooldownDays
+    )
+
+    if (shouldWait) {
+      console.log(`Skipping refactor issue creation: ${reason}`)
+      return
+    }
+
+    console.log(`Proceeding with refactor issue creation: ${reason}`)
+
     // Get refactor label ID
     const labelInfo = await github.graphql(
       `
@@ -36080,10 +36180,13 @@ module.exports = async ({
     // Read the template content
     const issueBody = helpers.readRefactorIssueTemplate(refactorIssueTemplate)
 
+    // Create issue title with [AUTO] marker to identify auto-created issues
+    const issueTitle = `refactor: codebase improvements [AUTO] - ${new Date().toISOString()}`
+
     // Create and assign issue to Copilot
     if (dryRun) {
       console.log(
-        `[DRY RUN] Would create refactor issue with title: refactor: codebase improvements - ${new Date().toISOString()}`
+        `[DRY RUN] Would create refactor issue with title: ${issueTitle}`
       )
       console.log(
         `[DRY RUN] Would assign to Copilot bot (ID: ${copilotBotId})`
@@ -36093,7 +36196,7 @@ module.exports = async ({
         issue: {
           id: 'dry-run-id',
           number: 0,
-          title: `refactor: codebase improvements - ${new Date().toISOString()}`,
+          title: issueTitle,
           url: '[DRY RUN - would create new refactor issue]'
         }
       }
@@ -36122,7 +36225,7 @@ module.exports = async ({
       `,
       {
         repositoryId: repoId,
-        title: `refactor: codebase improvements - ${new Date().toISOString()}`,
+        title: issueTitle,
         body: issueBody,
         assigneeIds: [copilotBotId]
       }
@@ -36712,6 +36815,7 @@ async function run () {
     const createRefactorIssue = core.getInput('create-refactor-issue') !== 'false'
     const refactorIssueTemplate = core.getInput('refactor-issue-template') || ''
     const waitSeconds = parseInt(core.getInput('wait-seconds') || '300', 10)
+    const refactorCooldownDays = parseInt(core.getInput('refactor-cooldown-days') || '7', 10)
 
     // Parse skip labels from comma-separated string
     const skipLabels = skipLabelsRaw
@@ -36740,7 +36844,8 @@ async function run () {
       refactorThreshold,
       createRefactorIssue,
       refactorIssueTemplate,
-      waitSeconds
+      waitSeconds,
+      refactorCooldownDays
     })
 
     // Set outputs

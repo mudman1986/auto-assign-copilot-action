@@ -10,6 +10,9 @@
 const fs = require('fs')
 const path = require('path')
 
+// Constants
+const MS_PER_DAY = 1000 * 60 * 60 * 24
+
 /**
  * Check if an issue should be skipped for assignment
  * @param {Object} issue - Issue object from parseIssueData
@@ -244,6 +247,62 @@ function readRefactorIssueTemplate (templatePath) {
   }
 }
 
+/**
+ * Check if an issue was auto-created by this action
+ * Auto-created issues have [AUTO] in their title
+ * @param {Object} issue - Issue object
+ * @returns {boolean} - True if issue was auto-created
+ */
+function isAutoCreatedRefactorIssue (issue) {
+  return issue?.title?.includes('[AUTO]') ?? false
+}
+
+/**
+ * Check if an auto-created refactor issue was closed within the cooldown period
+ * @param {Array} closedIssues - Array of recently closed issues
+ * @param {number} cooldownDays - Number of days to wait
+ * @returns {Object} - {shouldWait: boolean, reason: string}
+ */
+function shouldWaitForCooldown (closedIssues, cooldownDays = 7) {
+  if (!closedIssues || closedIssues.length === 0) {
+    return { shouldWait: false, reason: 'No closed issues found' }
+  }
+
+  const now = new Date()
+  const cooldownMs = cooldownDays * MS_PER_DAY
+
+  // Find any auto-created refactor issue closed within the cooldown period
+  const recentAutoCreatedRefactor = closedIssues.find((issue) => {
+    const labels = normalizeIssueLabels(issue)
+    const hasRefactorLabel = labels.some((label) => label.name === 'refactor')
+
+    if (!hasRefactorLabel || !isAutoCreatedRefactorIssue(issue)) {
+      return false
+    }
+
+    // Check if it was closed within the cooldown period
+    const closedAt = new Date(issue.closedAt)
+    const timeSinceClosed = now - closedAt
+    return timeSinceClosed < cooldownMs
+  })
+
+  if (recentAutoCreatedRefactor) {
+    const closedAt = new Date(recentAutoCreatedRefactor.closedAt)
+    const daysSinceClosed = Math.floor((now - closedAt) / MS_PER_DAY)
+    const daysRemaining = Math.ceil(cooldownDays - daysSinceClosed)
+
+    return {
+      shouldWait: true,
+      reason: `Auto-created refactor issue #${recentAutoCreatedRefactor.number} was closed ${daysSinceClosed} days ago. Wait ${daysRemaining} more day(s) before creating a new one.`
+    }
+  }
+
+  return {
+    shouldWait: false,
+    reason: 'No auto-created refactor issue found closed within the cooldown period'
+  }
+}
+
 module.exports = {
   shouldSkipIssue,
   shouldAssignNewIssue,
@@ -252,5 +311,7 @@ module.exports = {
   normalizeIssueLabels,
   hasRecentRefactorIssue,
   findAvailableRefactorIssue,
-  readRefactorIssueTemplate
+  readRefactorIssueTemplate,
+  isAutoCreatedRefactorIssue,
+  shouldWaitForCooldown
 }

@@ -17,6 +17,7 @@
  * @param {boolean} params.createRefactorIssue - Whether to create new refactor issues
  * @param {string} params.refactorIssueTemplate - Path to the refactor issue template file
  * @param {number} params.waitSeconds - Number of seconds to wait for issue events (default: 0)
+ * @param {number} params.refactorCooldownDays - Number of days to wait before creating a new auto-created refactor issue (default: 7)
  */
 module.exports = async ({
   github,
@@ -30,7 +31,8 @@ module.exports = async ({
   refactorThreshold,
   createRefactorIssue,
   refactorIssueTemplate,
-  waitSeconds = 0
+  waitSeconds = 0,
+  refactorCooldownDays = 7
 }) => {
   const helpers = require('./helpers.js')
 
@@ -353,6 +355,43 @@ module.exports = async ({
    * Create a refactor issue
    */
   async function createRefactorIssueFunc () {
+    // Check cooldown period before creating a new auto-created refactor issue
+    console.log('Checking cooldown period for auto-created refactor issues...')
+
+    // Fetch recent closed issues to check for cooldown
+    const recentClosedResponse = await github.graphql(
+      `
+        query($owner: String!, $repo: String!) {
+          repository(owner: $owner, name: $repo) {
+            issues(first: 20, states: CLOSED, orderBy: {field: UPDATED_AT, direction: DESC}) {
+              nodes {
+                number
+                title
+                closedAt
+                labels(first: 10) {
+                  nodes { name }
+                }
+              }
+            }
+          }
+        }
+      `,
+      repoVars
+    )
+
+    const recentClosed = recentClosedResponse.repository.issues.nodes
+    const { shouldWait, reason } = helpers.shouldWaitForCooldown(
+      recentClosed,
+      refactorCooldownDays
+    )
+
+    if (shouldWait) {
+      console.log(`Skipping refactor issue creation: ${reason}`)
+      return
+    }
+
+    console.log(`Proceeding with refactor issue creation: ${reason}`)
+
     // Get refactor label ID
     const labelInfo = await github.graphql(
       `
@@ -375,10 +414,13 @@ module.exports = async ({
     // Read the template content
     const issueBody = helpers.readRefactorIssueTemplate(refactorIssueTemplate)
 
+    // Create issue title with [AUTO] marker to identify auto-created issues
+    const issueTitle = `refactor: codebase improvements [AUTO] - ${new Date().toISOString()}`
+
     // Create and assign issue to Copilot
     if (dryRun) {
       console.log(
-        `[DRY RUN] Would create refactor issue with title: refactor: codebase improvements - ${new Date().toISOString()}`
+        `[DRY RUN] Would create refactor issue with title: ${issueTitle}`
       )
       console.log(
         `[DRY RUN] Would assign to Copilot bot (ID: ${copilotBotId})`
@@ -388,7 +430,7 @@ module.exports = async ({
         issue: {
           id: 'dry-run-id',
           number: 0,
-          title: `refactor: codebase improvements - ${new Date().toISOString()}`,
+          title: issueTitle,
           url: '[DRY RUN - would create new refactor issue]'
         }
       }
@@ -417,7 +459,7 @@ module.exports = async ({
       `,
       {
         repositoryId: repoId,
-        title: `refactor: codebase improvements - ${new Date().toISOString()}`,
+        title: issueTitle,
         body: issueBody,
         assigneeIds: [copilotBotId]
       }
