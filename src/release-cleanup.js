@@ -56,9 +56,9 @@ function isOlderThanMonths (dateString, months) {
 /**
  * Filter releases to keep based on requirements:
  * - Keep max 3 major versions
- * - Keep 3 minor versions of the latest major
- * - Keep 2 minor versions of the second to last major
- * - Keep 1 minor version of the third to last major
+ * - Keep 5 releases of the latest major (no age limit)
+ * - Keep 3 releases of the second to last major (removed if older than 6 months)
+ * - Keep 2 releases of the third to last major (removed if older than 6 months)
  * - Don't remove any release less than a month old
  *
  * @param {Array} releases - Array of release objects with tag_name and published_at
