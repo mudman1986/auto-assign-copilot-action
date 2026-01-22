@@ -36007,11 +36007,11 @@ module.exports = async ({
 
   // Step 3: Handle different modes
   if (effectiveMode === 'refactor') {
-    // When effectiveMode is 'refactor', it means threshold was reached (switched from auto)
-    // or mode was explicitly set to 'refactor'
-    // If we switched due to threshold, bypass cooldown
-    const thresholdReached = context.eventName === 'issues' && mode === 'auto'
-    return handleRefactorMode(thresholdReached)
+    // When effectiveMode is 'refactor', check if we got here due to refactor threshold
+    // being reached (no refactor in last N closed issues) vs. explicit refactor mode
+    // Threshold-triggered refactor mode should bypass cooldown to maintain ratio
+    const thresholdTriggeredRefactorMode = context.eventName === 'issues' && mode === 'auto'
+    return handleRefactorMode(thresholdTriggeredRefactorMode)
   }
   if (effectiveMode === 'auto') {
     return assignNextIssue(labelOverride)
@@ -36020,9 +36020,11 @@ module.exports = async ({
 
   /**
    * Handle refactor mode: assign existing refactor issue or create new one
-   * @param {boolean} thresholdReached - Whether the refactor threshold was reached (bypasses cooldown)
+   * @param {boolean} bypassCooldown - Whether to bypass the cooldown check because the
+   *                                    refactor threshold was reached (not enough refactor
+   *                                    issues in the last N closed issues)
    */
-  async function handleRefactorMode (thresholdReached = false) {
+  async function handleRefactorMode (bypassCooldown = false) {
     console.log('Refactor mode: checking for available refactor issues...')
 
     // Get all open issues with detailed info including trackedIssues
@@ -36106,12 +36108,14 @@ module.exports = async ({
     }
 
     console.log('No available refactor issues found - creating a new one')
-    return createRefactorIssueFunc(thresholdReached)
+    return createRefactorIssueFunc(bypassCooldown)
   }
 
   /**
    * Create a refactor issue
-   * @param {boolean} bypassCooldown - Whether to bypass the cooldown check (e.g., when threshold is reached)
+   * @param {boolean} bypassCooldown - Whether to bypass the cooldown check because the
+   *                                    refactor threshold was reached (not enough refactor
+   *                                    issues in the last N closed issues)
    */
   async function createRefactorIssueFunc (bypassCooldown = false) {
     // Check cooldown period before creating a new auto-created refactor issue

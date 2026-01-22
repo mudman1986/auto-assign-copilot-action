@@ -932,6 +932,9 @@ describe('Workflow executeWorkflow', () => {
 
   describe('refactor threshold and cooldown interaction', () => {
     test('should bypass cooldown when refactor threshold is reached', async () => {
+      const REFACTOR_THRESHOLD = 4
+      const FETCH_COUNT = REFACTOR_THRESHOLD + 1 // Workflow fetches threshold + 1 to include just-closed issue
+
       // Create a recently closed auto-created refactor issue (within cooldown period)
       const recentlyClosedAutoRefactor = {
         number: 50,
@@ -945,7 +948,8 @@ describe('Workflow executeWorkflow', () => {
       const mockGithub = createMockGithub({
         graphql: async (query, variables) => {
           // Mock closed issues for threshold check
-          if (query.includes('states: CLOSED') && variables.fetchCount === 5) {
+          // fetchCount will be REFACTOR_THRESHOLD + 1
+          if (query.includes('states: CLOSED') && variables.fetchCount === FETCH_COUNT) {
             return {
               repository: {
                 issues: {
@@ -1080,7 +1084,7 @@ describe('Workflow executeWorkflow', () => {
         dryRun: false,
         allowParentIssues: false,
         skipLabels: ['no-ai'],
-        refactorThreshold: 4, // Check last 4 issues
+        refactorThreshold: REFACTOR_THRESHOLD, // Check last N issues
         createRefactorIssue: true,
         refactorIssueTemplate: '.github/REFACTOR_ISSUE_TEMPLATE.md',
         waitSeconds: 0,
@@ -1213,6 +1217,9 @@ describe('Workflow executeWorkflow', () => {
     })
 
     test('should bypass cooldown when mode is explicitly set to refactor and threshold is reached via issue event', async () => {
+      const REFACTOR_THRESHOLD = 4
+      const FETCH_COUNT = REFACTOR_THRESHOLD + 1 // Workflow fetches threshold + 1 to include just-closed issue
+
       // This tests the case where threshold determines mode switch
       const recentlyClosedAutoRefactor = {
         number: 50,
@@ -1225,8 +1232,9 @@ describe('Workflow executeWorkflow', () => {
 
       const mockGithub = createMockGithub({
         graphql: async (query, variables) => {
-          // Mock closed issues for threshold check (no refactor in last 4)
-          if (query.includes('states: CLOSED') && variables.fetchCount === 5) {
+          // Mock closed issues for threshold check (no refactor in last N)
+          // fetchCount will be REFACTOR_THRESHOLD + 1
+          if (query.includes('states: CLOSED') && variables.fetchCount === FETCH_COUNT) {
             return {
               repository: {
                 issues: {
@@ -1360,7 +1368,7 @@ describe('Workflow executeWorkflow', () => {
         dryRun: false,
         allowParentIssues: false,
         skipLabels: ['no-ai'],
-        refactorThreshold: 4,
+        refactorThreshold: REFACTOR_THRESHOLD,
         createRefactorIssue: true,
         refactorIssueTemplate: '.github/REFACTOR_ISSUE_TEMPLATE.md',
         waitSeconds: 0,
