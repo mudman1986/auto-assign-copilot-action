@@ -111,31 +111,36 @@ describe('Release Cleanup', () => {
       expect(tags).not.toContain('v1.0.0')
     })
 
-    test('should keep 3 minor versions of latest major', () => {
+    test('should keep 5 releases of latest major', () => {
       const releases = [
-        createRelease('v3.3.0', monthsAgo(2)),
-        createRelease('v3.2.0', monthsAgo(3)),
-        createRelease('v3.1.0', monthsAgo(4)),
-        createRelease('v3.0.0', monthsAgo(5)),
-        createRelease('v2.0.0', monthsAgo(6))
+        createRelease('v3.5.0', monthsAgo(2)),
+        createRelease('v3.4.0', monthsAgo(3)),
+        createRelease('v3.3.0', monthsAgo(4)),
+        createRelease('v3.2.0', monthsAgo(5)),
+        createRelease('v3.1.0', monthsAgo(6)),
+        createRelease('v3.0.0', monthsAgo(7)),
+        createRelease('v2.0.0', monthsAgo(8))
       ]
 
       const toKeep = filterReleasesToKeep(releases)
       const tags = toKeep.map(r => r.tag_name)
 
+      expect(tags).toContain('v3.5.0')
+      expect(tags).toContain('v3.4.0')
       expect(tags).toContain('v3.3.0')
       expect(tags).toContain('v3.2.0')
       expect(tags).toContain('v3.1.0')
       expect(tags).not.toContain('v3.0.0')
     })
 
-    test('should keep 2 minor versions of second major', () => {
+    test('should keep 3 releases of second major', () => {
       const releases = [
         createRelease('v3.0.0', monthsAgo(2)),
         createRelease('v2.5.0', monthsAgo(3)),
         createRelease('v2.4.0', monthsAgo(4)),
         createRelease('v2.3.0', monthsAgo(5)),
-        createRelease('v2.2.0', monthsAgo(6))
+        createRelease('v2.2.0', monthsAgo(6)),
+        createRelease('v2.1.0', monthsAgo(7))
       ]
 
       const toKeep = filterReleasesToKeep(releases)
@@ -143,11 +148,12 @@ describe('Release Cleanup', () => {
 
       expect(tags).toContain('v2.5.0')
       expect(tags).toContain('v2.4.0')
-      expect(tags).not.toContain('v2.3.0')
+      expect(tags).toContain('v2.3.0')
       expect(tags).not.toContain('v2.2.0')
+      expect(tags).not.toContain('v2.1.0')
     })
 
-    test('should keep 1 minor version of third major', () => {
+    test('should keep 2 releases of third major', () => {
       const releases = [
         createRelease('v3.0.0', monthsAgo(2)),
         createRelease('v2.0.0', monthsAgo(3)),
@@ -160,56 +166,100 @@ describe('Release Cleanup', () => {
       const tags = toKeep.map(r => r.tag_name)
 
       expect(tags).toContain('v1.9.9')
-      expect(tags).not.toContain('v1.8.0')
+      expect(tags).toContain('v1.8.0')
       expect(tags).not.toContain('v1.7.0')
     })
 
-    test('should handle the complete example from requirements', () => {
+    test('should handle the complete example with 5-3-2 pattern', () => {
       const releases = [
-        createRelease('v3.1.0', monthsAgo(2)),
-        createRelease('v3.0.9', monthsAgo(3)),
-        createRelease('v3.0.8', monthsAgo(4)),
-        createRelease('v3.0.7', monthsAgo(5)),
-        createRelease('v2.5.0', monthsAgo(6)),
-        createRelease('v2.4.0', monthsAgo(7)),
-        createRelease('v2.3.0', monthsAgo(8)),
-        createRelease('v1.9.9', monthsAgo(9)),
-        createRelease('v1.8.0', monthsAgo(10)),
+        createRelease('v3.4.0', monthsAgo(2)),
+        createRelease('v3.3.0', monthsAgo(3)),
+        createRelease('v3.2.0', monthsAgo(4)),
+        createRelease('v3.1.0', monthsAgo(5)),
+        createRelease('v3.0.9', monthsAgo(6)),
+        createRelease('v3.0.8', monthsAgo(7)),
+        createRelease('v3.0.7', monthsAgo(8)),
+        createRelease('v2.5.0', monthsAgo(4)),
+        createRelease('v2.4.0', monthsAgo(5)),
+        createRelease('v2.3.0', monthsAgo(6)),
+        createRelease('v2.2.0', monthsAgo(7)),
+        createRelease('v1.9.9', monthsAgo(4)),
+        createRelease('v1.8.0', monthsAgo(5)),
+        createRelease('v1.7.0', monthsAgo(6)),
         createRelease('v0.1.0', monthsAgo(11))
       ]
 
       const toKeep = filterReleasesToKeep(releases)
       const tags = toKeep.map(r => r.tag_name)
 
-      // Should keep exactly these from the example
+      // Latest major (v3): keep 5 releases
+      expect(tags).toContain('v3.4.0')
+      expect(tags).toContain('v3.3.0')
+      expect(tags).toContain('v3.2.0')
       expect(tags).toContain('v3.1.0')
       expect(tags).toContain('v3.0.9')
-      expect(tags).toContain('v3.0.8')
+      expect(tags).not.toContain('v3.0.8')
+      expect(tags).not.toContain('v3.0.7')
+
+      // Second major (v2): keep 3 releases
       expect(tags).toContain('v2.5.0')
       expect(tags).toContain('v2.4.0')
-      expect(tags).toContain('v1.9.9')
+      expect(tags).toContain('v2.3.0')
+      expect(tags).not.toContain('v2.2.0')
 
-      // Should NOT keep these
-      expect(tags).not.toContain('v3.0.7')
-      expect(tags).not.toContain('v2.3.0')
-      expect(tags).not.toContain('v1.8.0')
+      // Third major (v1): keep 2 releases
+      expect(tags).toContain('v1.9.9')
+      expect(tags).toContain('v1.8.0')
+      expect(tags).not.toContain('v1.7.0')
+
+      // Fourth major (v0): deleted entirely
       expect(tags).not.toContain('v0.1.0')
     })
 
-    test('should keep top N releases per major, prioritizing latest patches', () => {
+    test('should remove non-latest major releases older than 6 months', () => {
       const releases = [
-        createRelease('v3.1.3', monthsAgo(2)),
-        createRelease('v3.1.2', monthsAgo(3)),
-        createRelease('v3.1.1', monthsAgo(4)),
-        createRelease('v3.0.5', monthsAgo(5)),
-        createRelease('v3.0.4', monthsAgo(6)),
-        createRelease('v3.0.3', monthsAgo(7))
+        createRelease('v3.0.0', monthsAgo(2)),
+        createRelease('v2.5.0', monthsAgo(3)), // Should keep (< 6 months)
+        createRelease('v2.4.0', monthsAgo(4)), // Should keep (< 6 months)
+        createRelease('v2.3.0', monthsAgo(7)), // Should delete (> 6 months, non-latest major)
+        createRelease('v1.9.9', monthsAgo(5)), // Should keep (< 6 months)
+        createRelease('v1.8.0', monthsAgo(8)) // Should delete (> 6 months, non-latest major)
       ]
 
       const toKeep = filterReleasesToKeep(releases)
       const tags = toKeep.map(r => r.tag_name)
 
-      // Should keep top 3 releases: 3.1.3, 3.1.2, 3.1.1
+      // Latest major (v3) should keep regardless of age
+      expect(tags).toContain('v3.0.0')
+
+      // Second major (v2): keep only releases < 6 months
+      expect(tags).toContain('v2.5.0')
+      expect(tags).toContain('v2.4.0')
+      expect(tags).not.toContain('v2.3.0') // Older than 6 months
+
+      // Third major (v1): keep only releases < 6 months
+      expect(tags).toContain('v1.9.9')
+      expect(tags).not.toContain('v1.8.0') // Older than 6 months
+    })
+
+    test('should keep top N releases per major, prioritizing latest patches', () => {
+      const releases = [
+        createRelease('v3.1.5', monthsAgo(2)),
+        createRelease('v3.1.4', monthsAgo(3)),
+        createRelease('v3.1.3', monthsAgo(4)),
+        createRelease('v3.1.2', monthsAgo(5)),
+        createRelease('v3.1.1', monthsAgo(6)),
+        createRelease('v3.0.5', monthsAgo(7)),
+        createRelease('v3.0.4', monthsAgo(8)),
+        createRelease('v3.0.3', monthsAgo(9))
+      ]
+
+      const toKeep = filterReleasesToKeep(releases)
+      const tags = toKeep.map(r => r.tag_name)
+
+      // Should keep top 5 releases: 3.1.5, 3.1.4, 3.1.3, 3.1.2, 3.1.1
+      expect(tags).toContain('v3.1.5')
+      expect(tags).toContain('v3.1.4')
       expect(tags).toContain('v3.1.3')
       expect(tags).toContain('v3.1.2')
       expect(tags).toContain('v3.1.1')

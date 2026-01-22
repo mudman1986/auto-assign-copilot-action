@@ -120,17 +120,22 @@ function filterReleasesToKeep (releases) {
     // Determine how many releases to keep based on position
     let releasesToKeepCount
     if (index === 0) {
-      releasesToKeepCount = 3 // Latest major: keep up to 3 releases
+      releasesToKeepCount = 5 // Latest major: keep up to 5 releases
     } else if (index === 1) {
-      releasesToKeepCount = 2 // Second major: keep up to 2 releases
+      releasesToKeepCount = 3 // Second major: keep up to 3 releases
     } else {
-      releasesToKeepCount = 1 // Third major: keep up to 1 release
+      releasesToKeepCount = 2 // Third major: keep up to 2 releases
     }
 
     // Releases are already sorted by version (descending within this major)
-    // Take the top N releases
-    const topReleases = releases.slice(0, releasesToKeepCount)
-    topReleases.forEach(release => {
+    // For non-latest majors, also apply 6-month age filter
+    const filteredReleases = index === 0
+      ? releases.slice(0, releasesToKeepCount)
+      : releases
+        .slice(0, releasesToKeepCount)
+        .filter(r => !isOlderThanMonths(r.published_at, 6))
+
+    filteredReleases.forEach(release => {
       releasesToKeep.add(release.tag_name)
     })
   })
