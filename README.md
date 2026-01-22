@@ -90,7 +90,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Assign Copilot to issue
-        uses: mudman1986/auto-assign-copilot-action@v1.3.2
+        uses: mudman1986/auto-assign-copilot-action@v2.0.0
         with:
           github-token: ${{ secrets.COPILOT_ASSIGN_PAT }}
           mode: ${{ inputs.mode || 'auto' }}
@@ -229,7 +229,7 @@ This design ensures that the refactor threshold takes priority over the cooldown
 
 ```yaml
 # Minimal configuration
-- uses: mudman1986/auto-assign-copilot-action@v1.3.2
+- uses: mudman1986/auto-assign-copilot-action@v2.0.0
   with:
     github-token: ${{ secrets.COPILOT_ASSIGN_PAT }}
 ```
@@ -238,19 +238,19 @@ This design ensures that the refactor threshold takes priority over the cooldown
 
 ```yaml
 # Bug priority only
-- uses: mudman1986/auto-assign-copilot-action@v1.3.2
+- uses: mudman1986/auto-assign-copilot-action@v2.0.0
   with:
     github-token: ${{ secrets.COPILOT_ASSIGN_PAT }}
     label-override: "bug"
 
 # Force assignment (override existing assignments)
-- uses: mudman1986/auto-assign-copilot-action@v1.3.2
+- uses: mudman1986/auto-assign-copilot-action@v2.0.0
   with:
     github-token: ${{ secrets.COPILOT_ASSIGN_PAT }}
     force: true
 
 # Dry run mode (preview without changes)
-- uses: mudman1986/auto-assign-copilot-action@v1.3.2
+- uses: mudman1986/auto-assign-copilot-action@v2.0.0
   with:
     github-token: ${{ secrets.COPILOT_ASSIGN_PAT }}
     dry-run: true
@@ -279,13 +279,13 @@ This design ensures that the refactor threshold takes priority over the cooldown
     allow-parent-issues: true
 
 # Custom grace period (10 minutes)
-- uses: mudman1986/auto-assign-copilot-action@v1.3.2
+- uses: mudman1986/auto-assign-copilot-action@v2.0.0
   with:
     github-token: ${{ secrets.COPILOT_ASSIGN_PAT }}
     wait-seconds: '600'  # 10 minutes wait for issue events
 
 # No grace period (immediate assignment)
-- uses: mudman1986/auto-assign-copilot-action@v1.3.2
+- uses: mudman1986/auto-assign-copilot-action@v2.0.0
   with:
     github-token: ${{ secrets.COPILOT_ASSIGN_PAT }}
     wait-seconds: '0'  # Assign immediately even for issue events
@@ -295,25 +295,25 @@ This design ensures that the refactor threshold takes priority over the cooldown
   uses: actions/checkout@v4
 
 - name: Use custom refactor template
-  uses: mudman1986/auto-assign-copilot-action@v1.3.2
+  uses: mudman1986/auto-assign-copilot-action@v2.0.0
   with:
     github-token: ${{ secrets.COPILOT_ASSIGN_PAT }}
     refactor-issue-template: ".github/templates/custom-refactor.md"
 
 # Disable automatic refactor creation
-- uses: mudman1986/auto-assign-copilot-action@v1.3.2
+- uses: mudman1986/auto-assign-copilot-action@v2.0.0
   with:
     github-token: ${{ secrets.COPILOT_ASSIGN_PAT }}
     create-refactor-issue: false
 
 # Custom refactor cooldown (14 days instead of default 7)
-- uses: mudman1986/auto-assign-copilot-action@v1.3.2
+- uses: mudman1986/auto-assign-copilot-action@v2.0.0
   with:
     github-token: ${{ secrets.COPILOT_ASSIGN_PAT }}
     refactor-cooldown-days: '14'
 
 # Disable refactor cooldown (allow immediate creation)
-- uses: mudman1986/auto-assign-copilot-action@v1.3.2
+- uses: mudman1986/auto-assign-copilot-action@v2.0.0
   with:
     github-token: ${{ secrets.COPILOT_ASSIGN_PAT }}
     refactor-cooldown-days: '0'
@@ -337,7 +337,7 @@ jobs:
   assign:
     runs-on: ubuntu-latest
     steps:
-      - uses: mudman1986/auto-assign-copilot-action@v1.3.2
+      - uses: mudman1986/auto-assign-copilot-action@v2.0.0
         with:
           github-token: ${{ secrets.COPILOT_ASSIGN_PAT }}
           mode: ${{ inputs.mode }}
@@ -359,7 +359,7 @@ Example workflow:
   uses: actions/checkout@v4
 
 - name: Assign Copilot with custom template
-  uses: mudman1986/auto-assign-copilot-action@v1.3.2
+  uses: mudman1986/auto-assign-copilot-action@v2.0.0
   with:
     github-token: ${{ secrets.COPILOT_ASSIGN_PAT }}
     refactor-issue-template: ".github/templates/custom-refactor.md"
@@ -481,7 +481,7 @@ npx standard --fix  # Auto-fix issues
 ```yaml
 - name: Assign issue
   id: assign
-  uses: mudman1986/auto-assign-copilot-action@v1.3.2
+  uses: mudman1986/auto-assign-copilot-action@v2.0.0
   with:
     github-token: ${{ secrets.COPILOT_ASSIGN_PAT }}
 

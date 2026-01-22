@@ -35616,6 +35616,7 @@ function hasRecentRefactorIssue (closedIssues, count = 4) {
 
 /**
  * Read the content of the refactor issue template file
+ * Enhanced with additional security validations (V03: Path Traversal Protection)
  * @param {string} templatePath - Path to the template file (relative to workspace root)
  * @returns {string} - Template content or default content if file doesn't exist or path is empty
  */
@@ -35653,6 +35654,18 @@ function readRefactorIssueTemplate (templatePath) {
   }
 
   try {
+    // Reject absolute paths immediately (V03: Path Traversal)
+    if (path.isAbsolute(templatePath)) {
+      console.log(`Template path ${templatePath} is absolute, using default content`)
+      return defaultContent
+    }
+
+    // Reject UNC paths (Windows network shares) (V03: Path Traversal)
+    if (templatePath.startsWith('\\\\')) {
+      console.log(`Template path ${templatePath} is a UNC path, using default content`)
+      return defaultContent
+    }
+
     // Resolve the template path relative to the workspace
     const workspaceRoot = process.env.GITHUB_WORKSPACE || process.cwd()
     const absolutePath = path.resolve(workspaceRoot, templatePath)
@@ -35666,9 +35679,25 @@ function readRefactorIssueTemplate (templatePath) {
       return defaultContent
     }
 
+    // Validate file extension whitelist (V03: File Extension Validation)
+    const allowedExtensions = ['.md', '.txt']
+    const ext = path.extname(absolutePath).toLowerCase()
+    if (!allowedExtensions.includes(ext)) {
+      console.log(`Template file extension ${ext} not allowed, using default content`)
+      return defaultContent
+    }
+
     // Check if file exists
     if (!fs.existsSync(absolutePath)) {
       console.log(`Template file not found at ${absolutePath}, using default content`)
+      return defaultContent
+    }
+
+    // Check file size limit (V03: File Size Limit - 100KB max)
+    const stats = fs.statSync(absolutePath)
+    const MAX_SIZE = 100 * 1024 // 100KB
+    if (stats.size > MAX_SIZE) {
+      console.log(`Template file too large (${stats.size} bytes), using default content`)
       return defaultContent
     }
 
@@ -35768,6 +35797,120 @@ module.exports = {
   isAutoCreatedRefactorIssue,
   shouldWaitForCooldown,
   hasRequiredLabel
+}
+
+
+/***/ }),
+
+/***/ 4378:
+/***/ ((module) => {
+
+
+/**
+ * Input validation utilities for security hardening
+ * Addresses vulnerabilities: V01 (Integer Overflow), V02 (GraphQL Injection), V06 (Label Arrays)
+ */
+
+/**
+ * Validate and parse a positive integer with bounds checking
+ * Prevents integer overflow and negative values
+ * @param {string} value - The value to parse
+ * @param {string} defaultValue - Default value if parsing fails
+ * @param {number} min - Minimum allowed value
+ * @param {number} max - Maximum allowed value
+ * @returns {number} - Validated integer
+ * @throws {Error} - If value is invalid or out of bounds
+ */
+function validatePositiveInteger (value, defaultValue, min = 0, max = Number.MAX_SAFE_INTEGER) {
+  const parsed = parseInt(value || defaultValue, 10)
+
+  if (isNaN(parsed)) {
+    throw new Error(`Invalid integer: ${value}. Must be a valid number.`)
+  }
+
+  if (parsed < min || parsed > max) {
+    throw new Error(`Integer out of range: ${parsed}. Must be between ${min} and ${max}.`)
+  }
+
+  if (!Number.isSafeInteger(parsed)) {
+    throw new Error(`Integer not safe: ${parsed}. Value too large.`)
+  }
+
+  return parsed
+}
+
+/**
+ * Validate a label name for safe use in GraphQL queries
+ * Prevents GraphQL injection attacks
+ * @param {string} label - The label name to validate
+ * @returns {string|null} - Validated label name or null if empty
+ * @throws {Error} - If label contains invalid characters or is too long
+ */
+function validateLabelName (label) {
+  if (!label || typeof label !== 'string') {
+    return null
+  }
+
+  const trimmed = label.trim()
+
+  // Empty after trimming
+  if (trimmed.length === 0) {
+    return null
+  }
+
+  // GitHub label constraints: max 50 characters
+  if (trimmed.length > 50) {
+    throw new Error(`Label too long: ${trimmed.length} characters. Maximum is 50.`)
+  }
+
+  // Only allow safe characters: alphanumeric, dash, underscore, space
+  // This prevents GraphQL injection and special character issues
+  if (!/^[a-zA-Z0-9\-_ ]+$/.test(trimmed)) {
+    throw new Error(`Label contains invalid characters: "${trimmed}". Only alphanumeric, dash, underscore, and space allowed.`)
+  }
+
+  return trimmed
+}
+
+/**
+ * Validate and limit an array of label names
+ * Prevents DoS through excessive labels
+ * @param {Array<string>} labels - Array of label names
+ * @param {number} maxLabels - Maximum number of labels allowed
+ * @returns {Array<string>} - Validated and limited array of labels
+ */
+function validateLabelArray (labels, maxLabels = 50) {
+  if (!Array.isArray(labels)) {
+    return []
+  }
+
+  // Validate each label
+  const validatedLabels = []
+  for (const label of labels) {
+    try {
+      const validated = validateLabelName(label)
+      if (validated) {
+        validatedLabels.push(validated)
+      }
+    } catch (error) {
+      // Skip invalid labels but log warning
+      console.warn(`Skipping invalid label: ${error.message}`)
+    }
+  }
+
+  // Limit array size
+  if (validatedLabels.length > maxLabels) {
+    console.warn(`Too many labels (${validatedLabels.length}). Limiting to ${maxLabels}.`)
+    return validatedLabels.slice(0, maxLabels)
+  }
+
+  return validatedLabels
+}
+
+module.exports = {
+  validatePositiveInteger,
+  validateLabelName,
+  validateLabelArray
 }
 
 
@@ -36808,6 +36951,7 @@ var __webpack_exports__ = {};
 const core = __nccwpck_require__(7484)
 const github = __nccwpck_require__(3228)
 const executeWorkflow = __nccwpck_require__(5483)
+const { validatePositiveInteger, validateLabelName, validateLabelArray } = __nccwpck_require__(4378)
 
 /**
  * Main action execution
@@ -36817,23 +36961,28 @@ async function run () {
     // Get inputs from action.yml
     const token = core.getInput('github-token', { required: true })
     const mode = core.getInput('mode') || 'auto'
-    const labelOverride = core.getInput('label-override') || null
-    const requiredLabel = core.getInput('required-label') || null
     const force = core.getInput('force') === 'true'
     const dryRun = core.getInput('dry-run') === 'true'
     const allowParentIssues = core.getInput('allow-parent-issues') === 'true'
-    const skipLabelsRaw = core.getInput('skip-labels') || 'no-ai,refining'
-    const refactorThreshold = parseInt(core.getInput('refactor-threshold') || '4', 10)
     const createRefactorIssue = core.getInput('create-refactor-issue') !== 'false'
     const refactorIssueTemplate = core.getInput('refactor-issue-template') || ''
-    const waitSeconds = parseInt(core.getInput('wait-seconds') || '300', 10)
-    const refactorCooldownDays = parseInt(core.getInput('refactor-cooldown-days') || '7', 10)
 
-    // Parse skip labels from comma-separated string
-    const skipLabels = skipLabelsRaw
+    // Validate label override (V02: GraphQL Injection Prevention)
+    const labelOverride = validateLabelName(core.getInput('label-override'))
+    const requiredLabel = validateLabelName(core.getInput('required-label'))
+
+    // Validate numeric inputs with bounds checking (V01: Integer Overflow Prevention)
+    const refactorThreshold = validatePositiveInteger(core.getInput('refactor-threshold'), '4', 1, 100)
+    const waitSeconds = validatePositiveInteger(core.getInput('wait-seconds'), '300', 0, 3600)
+    const refactorCooldownDays = validatePositiveInteger(core.getInput('refactor-cooldown-days'), '7', 0, 365)
+
+    // Parse and validate skip labels (V06: Label Array Validation)
+    const skipLabelsRaw = core.getInput('skip-labels') || 'no-ai,refining'
+    const skipLabelsParsed = skipLabelsRaw
       .split(',')
       .map((label) => label.trim())
       .filter((label) => label.length > 0)
+    const skipLabels = validateLabelArray(skipLabelsParsed, 50)
 
     console.log(`Running auto-assign-copilot action (mode: ${mode}, force: ${force}, dryRun: ${dryRun})`)
 

@@ -67,7 +67,7 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Assign Copilot to issue
-        uses: mudman1986/auto-assign-copilot-action@v1.4.0
+        uses: mudman1986/auto-assign-copilot-action@v2.0.0
         with:
           github-token: ${{ secrets.COPILOT_ASSIGN_PAT }}
           mode: ${{ inputs.mode || 'auto' }}
@@ -78,3 +78,4 @@ jobs:
           skip-labels: ${{ inputs.skip_labels || 'no-ai,refining' }}
           refactor-threshold: ${{ inputs.refactor_threshold || '4' }}
           wait-seconds: '300' # 5 minutes grace period for issue events
+          refactor-issue-template: .github/REFACTOR_ISSUE_TEMPLATE.md

@@ -173,6 +173,7 @@ function hasRecentRefactorIssue (closedIssues, count = 4) {
 
 /**
  * Read the content of the refactor issue template file
+ * Enhanced with additional security validations (V03: Path Traversal Protection)
  * @param {string} templatePath - Path to the template file (relative to workspace root)
  * @returns {string} - Template content or default content if file doesn't exist or path is empty
  */
@@ -210,6 +211,18 @@ function readRefactorIssueTemplate (templatePath) {
   }
 
   try {
+    // Reject absolute paths immediately (V03: Path Traversal)
+    if (path.isAbsolute(templatePath)) {
+      console.log(`Template path ${templatePath} is absolute, using default content`)
+      return defaultContent
+    }
+
+    // Reject UNC paths (Windows network shares) (V03: Path Traversal)
+    if (templatePath.startsWith('\\\\')) {
+      console.log(`Template path ${templatePath} is a UNC path, using default content`)
+      return defaultContent
+    }
+
     // Resolve the template path relative to the workspace
     const workspaceRoot = process.env.GITHUB_WORKSPACE || process.cwd()
     const absolutePath = path.resolve(workspaceRoot, templatePath)
@@ -223,9 +236,25 @@ function readRefactorIssueTemplate (templatePath) {
       return defaultContent
     }
 
+    // Validate file extension whitelist (V03: File Extension Validation)
+    const allowedExtensions = ['.md', '.txt']
+    const ext = path.extname(absolutePath).toLowerCase()
+    if (!allowedExtensions.includes(ext)) {
+      console.log(`Template file extension ${ext} not allowed, using default content`)
+      return defaultContent
+    }
+
     // Check if file exists
     if (!fs.existsSync(absolutePath)) {
       console.log(`Template file not found at ${absolutePath}, using default content`)
+      return defaultContent
+    }
+
+    // Check file size limit (V03: File Size Limit - 100KB max)
+    const stats = fs.statSync(absolutePath)
+    const MAX_SIZE = 100 * 1024 // 100KB
+    if (stats.size > MAX_SIZE) {
+      console.log(`Template file too large (${stats.size} bytes), using default content`)
       return defaultContent
     }
 
