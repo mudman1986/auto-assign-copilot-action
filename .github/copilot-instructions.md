@@ -71,6 +71,31 @@ Build the action:
 npm run build
 ```
 
+### Version References
+
+**Always update version references after making changes.** After implementing any feature or fix:
+
+1. Check the latest tag:
+```bash
+git tag --sort=-v:refname | head -1
+```
+
+2. Update all version references in documentation to match the latest tag:
+```bash
+# Find all version references
+grep -r "mudman1986/auto-assign-copilot-action@v" --include="*.md" --include="*.yml" --include="*.yaml"
+
+# Update them to the latest version (e.g., v1.3.2)
+sed -i 's/@v1\.[0-9]\.[0-9]/@v1.3.2/g' README.md
+```
+
+3. Verify all references are updated:
+```bash
+grep "mudman1986/auto-assign-copilot-action@v" README.md | sort -u
+```
+
+This ensures users always see examples with the most current version.
+
 ## Code Contribution Guidelines
 
 ### Summary and Documentation Files
