@@ -204,7 +204,10 @@ module.exports = async ({
   console.log(`Found ${allIssues.length} total open issues`)
 
   const currentIssues = allIssues.filter((issue) =>
-    issue.assignees.nodes.some((assignee) => assignee.login === copilotLogin)
+    issue.assignees.nodes.some(
+      (assignee) =>
+        assignee.login === copilotLogin || assignee.id === copilotBotId
+    )
   )
 
   if (currentIssues.length > 0) {

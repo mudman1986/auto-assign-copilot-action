@@ -35902,7 +35902,10 @@ module.exports = async ({
   console.log(`Found ${allIssues.length} total open issues`)
 
   const currentIssues = allIssues.filter((issue) =>
-    issue.assignees.nodes.some((assignee) => assignee.login === copilotLogin)
+    issue.assignees.nodes.some(
+      (assignee) =>
+        assignee.login === copilotLogin || assignee.id === copilotBotId
+    )
   )
 
   if (currentIssues.length > 0) {
@@ -36701,7 +36704,7 @@ async function run () {
     const refactorThreshold = parseInt(core.getInput('refactor-threshold') || '4', 10)
     const createRefactorIssue = core.getInput('create-refactor-issue') !== 'false'
     const refactorIssueTemplate = core.getInput('refactor-issue-template') || '.github/REFACTOR_ISSUE_TEMPLATE.md'
-    const waitSeconds = parseInt(core.getInput('wait-seconds') || '0', 10)
+    const waitSeconds = parseInt(core.getInput('wait-seconds') || '300', 10)
 
     // Parse skip labels from comma-separated string
     const skipLabels = skipLabelsRaw
