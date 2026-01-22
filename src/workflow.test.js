@@ -929,4 +929,462 @@ describe('Workflow executeWorkflow', () => {
       expect(elapsedTime).toBeLessThan(1000)
     })
   })
+
+  describe('refactor threshold and cooldown interaction', () => {
+    test('should bypass cooldown when refactor threshold is reached', async () => {
+      const REFACTOR_THRESHOLD = 4
+      const FETCH_COUNT = REFACTOR_THRESHOLD + 1 // Workflow fetches threshold + 1 to include just-closed issue
+
+      // Create a recently closed auto-created refactor issue (within cooldown period)
+      const recentlyClosedAutoRefactor = {
+        number: 50,
+        title: 'refactor: codebase improvements [AUTO] - 2024-01-01T00:00:00.000Z',
+        closedAt: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000).toISOString(), // 2 days ago
+        labels: {
+          nodes: [{ name: 'refactor' }]
+        }
+      }
+
+      const mockGithub = createMockGithub({
+        graphql: async (query, variables) => {
+          // Mock closed issues for threshold check
+          // fetchCount will be REFACTOR_THRESHOLD + 1
+          if (query.includes('states: CLOSED') && variables.fetchCount === FETCH_COUNT) {
+            return {
+              repository: {
+                issues: {
+                  nodes: [
+                    {
+                      number: 1,
+                      title: 'Bug fix',
+                      closedAt: new Date().toISOString(),
+                      labels: { nodes: [{ name: 'bug' }] }
+                    },
+                    {
+                      number: 2,
+                      title: 'Feature',
+                      closedAt: new Date().toISOString(),
+                      labels: { nodes: [{ name: 'enhancement' }] }
+                    },
+                    {
+                      number: 3,
+                      title: 'Doc update',
+                      closedAt: new Date().toISOString(),
+                      labels: { nodes: [{ name: 'documentation' }] }
+                    },
+                    {
+                      number: 4,
+                      title: 'Another bug',
+                      closedAt: new Date().toISOString(),
+                      labels: { nodes: [{ name: 'bug' }] }
+                    }
+                  ]
+                }
+              }
+            }
+          }
+          // Mock recent closed issues for cooldown check (includes auto-created refactor)
+          if (query.includes('states: CLOSED') && query.includes('first: 20')) {
+            return {
+              repository: {
+                issues: {
+                  nodes: [recentlyClosedAutoRefactor]
+                }
+              }
+            }
+          }
+          // Mock createIssue mutation
+          if (query.includes('createIssue')) {
+            return {
+              createIssue: {
+                issue: {
+                  id: 'new-refactor-issue-id',
+                  number: 100,
+                  title: 'refactor: codebase improvements [AUTO]',
+                  url: 'https://github.com/test/repo/issues/100',
+                  assignees: {
+                    nodes: [{ login: 'copilot-swe-agent' }]
+                  }
+                }
+              }
+            }
+          }
+          if (query.includes('addLabelsToLabelable')) {
+            return {
+              addLabelsToLabelable: {
+                labelable: {
+                  labels: {
+                    nodes: [{ name: 'refactor' }]
+                  }
+                }
+              }
+            }
+          }
+          if (query.includes('label(name: "refactor")')) {
+            return {
+              repository: {
+                label: {
+                  id: 'refactor-label-id'
+                }
+              }
+            }
+          }
+          if (query.includes('suggestedActors')) {
+            return {
+              repository: {
+                id: 'repo-id-123',
+                suggestedActors: {
+                  nodes: [
+                    {
+                      login: 'copilot-swe-agent',
+                      __typename: 'Bot',
+                      id: 'copilot-bot-id-123'
+                    }
+                  ]
+                }
+              }
+            }
+          }
+          if (query.includes('issues(first: 100, states: OPEN)')) {
+            return {
+              repository: {
+                issues: {
+                  nodes: []
+                }
+              }
+            }
+          }
+          if (query.includes('states: OPEN, labels: ["refactor"]')) {
+            return {
+              repository: {
+                issues: {
+                  nodes: []
+                }
+              }
+            }
+          }
+          return {}
+        }
+      })
+
+      const mockContext = {
+        repo: {
+          owner: 'test-owner',
+          repo: 'test-repo'
+        },
+        eventName: 'issues' // Issue event triggers threshold check
+      }
+
+      const result = await executeWorkflow({
+        github: mockGithub,
+        context: mockContext,
+        mode: 'auto', // Start in auto mode
+        labelOverride: null,
+        force: false,
+        dryRun: false,
+        allowParentIssues: false,
+        skipLabels: ['no-ai'],
+        refactorThreshold: REFACTOR_THRESHOLD, // Check last N issues
+        createRefactorIssue: true,
+        refactorIssueTemplate: '.github/REFACTOR_ISSUE_TEMPLATE.md',
+        waitSeconds: 0,
+        refactorCooldownDays: 7 // 7 day cooldown
+      })
+
+      // Should have created the issue despite being within cooldown period
+      expect(result).not.toBeNull()
+      expect(result.issue).toBeDefined()
+      expect(result.issue.number).toBe(100)
+
+      // Verify createIssue was called (cooldown bypassed)
+      const createIssueCalls = mockGithub.graphql.mock.calls.filter(
+        (call) => typeof call[0] === 'string' && call[0].includes('createIssue')
+      )
+      expect(createIssueCalls.length).toBeGreaterThan(0)
+    })
+
+    test('should respect cooldown when threshold is NOT reached', async () => {
+      // Create a recently closed auto-created refactor issue (within cooldown period)
+      const recentlyClosedAutoRefactor = {
+        number: 50,
+        title: 'refactor: codebase improvements [AUTO] - 2024-01-01T00:00:00.000Z',
+        closedAt: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000).toISOString(), // 2 days ago
+        labels: {
+          nodes: [{ name: 'refactor' }]
+        }
+      }
+
+      const mockGithub = createMockGithub({
+        graphql: async (query, variables) => {
+          // Mock recent closed issues for cooldown check
+          if (query.includes('states: CLOSED') && query.includes('first: 20')) {
+            return {
+              repository: {
+                issues: {
+                  nodes: [recentlyClosedAutoRefactor]
+                }
+              }
+            }
+          }
+          if (query.includes('suggestedActors')) {
+            return {
+              repository: {
+                id: 'repo-id-123',
+                suggestedActors: {
+                  nodes: [
+                    {
+                      login: 'copilot-swe-agent',
+                      __typename: 'Bot',
+                      id: 'copilot-bot-id-123'
+                    }
+                  ]
+                }
+              }
+            }
+          }
+          if (query.includes('issues(first: 100, states: OPEN)')) {
+            return {
+              repository: {
+                issues: {
+                  nodes: []
+                }
+              }
+            }
+          }
+          if (query.includes('states: OPEN, labels: ["refactor"]')) {
+            return {
+              repository: {
+                issues: {
+                  nodes: []
+                }
+              }
+            }
+          }
+          if (query.includes('states: OPEN, labels:')) {
+            return {
+              repository: {
+                issues: {
+                  nodes: []
+                }
+              }
+            }
+          }
+          if (query.includes('issues(first: 100, states: OPEN, orderBy:')) {
+            return {
+              repository: {
+                issues: {
+                  nodes: []
+                }
+              }
+            }
+          }
+          return {}
+        }
+      })
+
+      const mockContext = {
+        repo: {
+          owner: 'test-owner',
+          repo: 'test-repo'
+        },
+        eventName: 'workflow_dispatch' // Not an issue event, no threshold check
+      }
+
+      const result = await executeWorkflow({
+        github: mockGithub,
+        context: mockContext,
+        mode: 'auto', // Auto mode, no issues available
+        labelOverride: null,
+        force: false,
+        dryRun: false,
+        allowParentIssues: false,
+        skipLabels: ['no-ai'],
+        refactorThreshold: 4,
+        createRefactorIssue: true,
+        refactorIssueTemplate: '.github/REFACTOR_ISSUE_TEMPLATE.md',
+        waitSeconds: 0,
+        refactorCooldownDays: 7 // 7 day cooldown
+      })
+
+      // Should NOT have created an issue (cooldown respected)
+      expect(result).toBeUndefined()
+
+      // Verify createIssue was NOT called (cooldown blocked it)
+      const createIssueCalls = mockGithub.graphql.mock.calls.filter(
+        (call) => typeof call[0] === 'string' && call[0].includes('createIssue')
+      )
+      expect(createIssueCalls.length).toBe(0)
+    })
+
+    test('should bypass cooldown when mode is explicitly set to refactor and threshold is reached via issue event', async () => {
+      const REFACTOR_THRESHOLD = 4
+      const FETCH_COUNT = REFACTOR_THRESHOLD + 1 // Workflow fetches threshold + 1 to include just-closed issue
+
+      // This tests the case where threshold determines mode switch
+      const recentlyClosedAutoRefactor = {
+        number: 50,
+        title: 'refactor: codebase improvements [AUTO] - 2024-01-01T00:00:00.000Z',
+        closedAt: new Date(Date.now() - 1 * 24 * 60 * 60 * 1000).toISOString(), // 1 day ago
+        labels: {
+          nodes: [{ name: 'refactor' }]
+        }
+      }
+
+      const mockGithub = createMockGithub({
+        graphql: async (query, variables) => {
+          // Mock closed issues for threshold check (no refactor in last N)
+          // fetchCount will be REFACTOR_THRESHOLD + 1
+          if (query.includes('states: CLOSED') && variables.fetchCount === FETCH_COUNT) {
+            return {
+              repository: {
+                issues: {
+                  nodes: [
+                    {
+                      number: 1,
+                      title: 'Bug fix',
+                      closedAt: new Date().toISOString(),
+                      labels: { nodes: [{ name: 'bug' }] }
+                    },
+                    {
+                      number: 2,
+                      title: 'Feature',
+                      closedAt: new Date().toISOString(),
+                      labels: { nodes: [{ name: 'enhancement' }] }
+                    },
+                    {
+                      number: 3,
+                      title: 'Doc update',
+                      closedAt: new Date().toISOString(),
+                      labels: { nodes: [{ name: 'documentation' }] }
+                    },
+                    {
+                      number: 4,
+                      title: 'Another bug',
+                      closedAt: new Date().toISOString(),
+                      labels: { nodes: [{ name: 'bug' }] }
+                    }
+                  ]
+                }
+              }
+            }
+          }
+          // Mock recent closed for cooldown (has recent auto-created refactor)
+          if (query.includes('states: CLOSED') && query.includes('first: 20')) {
+            return {
+              repository: {
+                issues: {
+                  nodes: [recentlyClosedAutoRefactor]
+                }
+              }
+            }
+          }
+          if (query.includes('createIssue')) {
+            return {
+              createIssue: {
+                issue: {
+                  id: 'new-refactor-issue-id',
+                  number: 101,
+                  title: 'refactor: codebase improvements [AUTO]',
+                  url: 'https://github.com/test/repo/issues/101',
+                  assignees: {
+                    nodes: [{ login: 'copilot-swe-agent' }]
+                  }
+                }
+              }
+            }
+          }
+          if (query.includes('addLabelsToLabelable')) {
+            return {
+              addLabelsToLabelable: {
+                labelable: {
+                  labels: {
+                    nodes: [{ name: 'refactor' }]
+                  }
+                }
+              }
+            }
+          }
+          if (query.includes('label(name: "refactor")')) {
+            return {
+              repository: {
+                label: {
+                  id: 'refactor-label-id'
+                }
+              }
+            }
+          }
+          if (query.includes('suggestedActors')) {
+            return {
+              repository: {
+                id: 'repo-id-123',
+                suggestedActors: {
+                  nodes: [
+                    {
+                      login: 'copilot-swe-agent',
+                      __typename: 'Bot',
+                      id: 'copilot-bot-id-123'
+                    }
+                  ]
+                }
+              }
+            }
+          }
+          if (query.includes('issues(first: 100, states: OPEN)')) {
+            return {
+              repository: {
+                issues: {
+                  nodes: []
+                }
+              }
+            }
+          }
+          if (query.includes('states: OPEN, labels: ["refactor"]')) {
+            return {
+              repository: {
+                issues: {
+                  nodes: []
+                }
+              }
+            }
+          }
+          return {}
+        }
+      })
+
+      const mockContext = {
+        repo: {
+          owner: 'test-owner',
+          repo: 'test-repo'
+        },
+        eventName: 'issues' // Issue event - triggers threshold check
+      }
+
+      const result = await executeWorkflow({
+        github: mockGithub,
+        context: mockContext,
+        mode: 'auto', // Will switch to refactor due to threshold
+        labelOverride: null,
+        force: false,
+        dryRun: false,
+        allowParentIssues: false,
+        skipLabels: ['no-ai'],
+        refactorThreshold: REFACTOR_THRESHOLD,
+        createRefactorIssue: true,
+        refactorIssueTemplate: '.github/REFACTOR_ISSUE_TEMPLATE.md',
+        waitSeconds: 0,
+        refactorCooldownDays: 7
+      })
+
+      // Should create issue despite cooldown (threshold bypasses it)
+      expect(result).not.toBeNull()
+      expect(result.issue).toBeDefined()
+      expect(result.issue.number).toBe(101)
+
+      // Verify createIssue was called
+      const createIssueCalls = mockGithub.graphql.mock.calls.filter(
+        (call) => typeof call[0] === 'string' && call[0].includes('createIssue')
+      )
+      expect(createIssueCalls.length).toBeGreaterThan(0)
+    })
+  })
 })

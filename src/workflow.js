@@ -259,7 +259,11 @@ module.exports = async ({
 
   // Step 3: Handle different modes
   if (effectiveMode === 'refactor') {
-    return handleRefactorMode()
+    // When effectiveMode is 'refactor', check if we got here due to refactor threshold
+    // being reached (no refactor in last N closed issues) vs. explicit refactor mode
+    // Threshold-triggered refactor mode should bypass cooldown to maintain ratio
+    const thresholdTriggeredRefactorMode = context.eventName === 'issues' && mode === 'auto'
+    return handleRefactorMode(thresholdTriggeredRefactorMode)
   }
   if (effectiveMode === 'auto') {
     return assignNextIssue(labelOverride)
@@ -268,8 +272,11 @@ module.exports = async ({
 
   /**
    * Handle refactor mode: assign existing refactor issue or create new one
+   * @param {boolean} bypassCooldown - Whether to bypass the cooldown check because the
+   *                                    refactor threshold was reached (not enough refactor
+   *                                    issues in the last N closed issues)
    */
-  async function handleRefactorMode () {
+  async function handleRefactorMode (bypassCooldown = false) {
     console.log('Refactor mode: checking for available refactor issues...')
 
     // Get all open issues with detailed info including trackedIssues
@@ -353,49 +360,57 @@ module.exports = async ({
     }
 
     console.log('No available refactor issues found - creating a new one')
-    return createRefactorIssueFunc()
+    return createRefactorIssueFunc(bypassCooldown)
   }
 
   /**
    * Create a refactor issue
+   * @param {boolean} bypassCooldown - Whether to bypass the cooldown check because the
+   *                                    refactor threshold was reached (not enough refactor
+   *                                    issues in the last N closed issues)
    */
-  async function createRefactorIssueFunc () {
+  async function createRefactorIssueFunc (bypassCooldown = false) {
     // Check cooldown period before creating a new auto-created refactor issue
-    console.log('Checking cooldown period for auto-created refactor issues...')
+    // Skip cooldown check if bypassCooldown is true (e.g., threshold reached)
+    if (!bypassCooldown) {
+      console.log('Checking cooldown period for auto-created refactor issues...')
 
-    // Fetch recent closed issues to check for cooldown
-    const recentClosedResponse = await github.graphql(
-      `
-        query($owner: String!, $repo: String!) {
-          repository(owner: $owner, name: $repo) {
-            issues(first: 20, states: CLOSED, orderBy: {field: UPDATED_AT, direction: DESC}) {
-              nodes {
-                number
-                title
-                closedAt
-                labels(first: 10) {
-                  nodes { name }
+      // Fetch recent closed issues to check for cooldown
+      const recentClosedResponse = await github.graphql(
+        `
+          query($owner: String!, $repo: String!) {
+            repository(owner: $owner, name: $repo) {
+              issues(first: 20, states: CLOSED, orderBy: {field: UPDATED_AT, direction: DESC}) {
+                nodes {
+                  number
+                  title
+                  closedAt
+                  labels(first: 10) {
+                    nodes { name }
+                  }
                 }
               }
             }
           }
-        }
-      `,
-      repoVars
-    )
+        `,
+        repoVars
+      )
 
-    const recentClosed = recentClosedResponse.repository.issues.nodes
-    const { shouldWait, reason } = helpers.shouldWaitForCooldown(
-      recentClosed,
-      refactorCooldownDays
-    )
+      const recentClosed = recentClosedResponse.repository.issues.nodes
+      const { shouldWait, reason } = helpers.shouldWaitForCooldown(
+        recentClosed,
+        refactorCooldownDays
+      )
 
-    if (shouldWait) {
-      console.log(`Skipping refactor issue creation: ${reason}`)
-      return
+      if (shouldWait) {
+        console.log(`Skipping refactor issue creation: ${reason}`)
+        return
+      }
+
+      console.log(`Proceeding with refactor issue creation: ${reason}`)
+    } else {
+      console.log('Refactor threshold reached - bypassing cooldown check')
     }
-
-    console.log(`Proceeding with refactor issue creation: ${reason}`)
 
     // Get refactor label ID
     const labelInfo = await github.graphql(
@@ -661,7 +676,8 @@ module.exports = async ({
       )
 
       // If no regular issues are available, handle refactor mode
-      return handleRefactorMode()
+      // Don't bypass cooldown here - threshold was not reached
+      return handleRefactorMode(false)
     }
 
     // Assign the issue to Copilot
