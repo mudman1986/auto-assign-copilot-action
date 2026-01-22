@@ -521,6 +521,14 @@ MIT © [mudman1986](https://github.com/mudman1986)
 - [Release Documentation](RELEASE.md)
 - [Security Policy](SECURITY.md)
 
+### Release Retention Policy
+
+Old releases are automatically cleaned up to maintain a manageable release history:
+- Latest major: Keep 5 releases
+- 2nd major: Keep 3 releases (removed after 6 months)
+- 3rd major: Keep 2 releases (removed after 6 months)
+- Releases less than 1 month old are never deleted
+
 ---
 
 <div align="center">

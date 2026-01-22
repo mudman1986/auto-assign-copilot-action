@@ -79,3 +79,11 @@ jobs:
             echo "::error::No release tags found. Please create a release first."
             exit 1
           fi
+
+      - name: Cleanup old releases
+        if: (github.event_name == 'push' || github.event_name == 'workflow_dispatch') && github.ref == 'refs/heads/main'
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITHUB_REPOSITORY: ${{ github.repository }}
+          DRY_RUN: 'false'
+        run: npm run cleanup-releases

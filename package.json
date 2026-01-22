@@ -5,7 +5,8 @@
 	"main": "dist/index.js",
 	"scripts": {
 		"build": "ncc build src/index.js -o dist --license licenses.txt",
-		"test": "jest"
+		"test": "jest",
+		"cleanup-releases": "node scripts/cleanup-releases.js"
 	},
 	"keywords": [
 		"github",
