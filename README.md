@@ -96,7 +96,7 @@ jobs:
           mode: ${{ inputs.mode || 'auto' }}
           wait-seconds: '300'  # 5 minutes grace period for issue events
 ```
-
+ 
 ### 2. Create the Required Label
 
 Create a label named `copilot-approved` in your repository:
