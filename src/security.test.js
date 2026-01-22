@@ -5,6 +5,7 @@
  * These tests demonstrate potential vulnerabilities and validate security controls
  */
 
+const core = require('@actions/core')
 const helpers = require('./helpers.js')
 const path = require('path')
 const fs = require('fs')
@@ -245,7 +246,6 @@ describe('Security Tests - Timing Attacks', () => {
 describe('Security Tests - Information Disclosure', () => {
   test('should not expose sensitive data in logs', () => {
     // Mock core.info to capture output
-    const core = require('@actions/core')
     const logs = []
     const originalInfo = core.info
     core.info = (...args) => logs.push(args.join(' '))

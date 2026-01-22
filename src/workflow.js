@@ -20,6 +20,10 @@
  * @param {number} params.waitSeconds - Number of seconds to wait for issue events (default: 0)
  * @param {number} params.refactorCooldownDays - Number of days to wait before creating a new auto-created refactor issue (default: 7)
  */
+
+const core = require('@actions/core')
+const helpers = require('./helpers.js')
+
 module.exports = async ({
   github,
   context,
@@ -36,9 +40,6 @@ module.exports = async ({
   waitSeconds = 0,
   refactorCooldownDays = 7
 }) => {
-  const core = require('@actions/core')
-  const helpers = require('./helpers.js')
-
   // Common GraphQL query variables
   const repoVars = {
     owner: context.repo.owner,

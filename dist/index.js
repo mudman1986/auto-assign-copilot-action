@@ -35960,6 +35960,10 @@ module.exports = {
  * @param {number} params.waitSeconds - Number of seconds to wait for issue events (default: 0)
  * @param {number} params.refactorCooldownDays - Number of days to wait before creating a new auto-created refactor issue (default: 7)
  */
+
+const core = __nccwpck_require__(7484)
+const helpers = __nccwpck_require__(6636)
+
 module.exports = async ({
   github,
   context,
@@ -35976,9 +35980,6 @@ module.exports = async ({
   waitSeconds = 0,
   refactorCooldownDays = 7
 }) => {
-  const core = __nccwpck_require__(7484)
-  const helpers = __nccwpck_require__(6636)
-
   // Common GraphQL query variables
   const repoVars = {
     owner: context.repo.owner,
