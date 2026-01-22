@@ -129,7 +129,7 @@ The action will autonomously assign issues to Copilot based on intelligent prior
 | `skip-labels` | Comma-separated labels to skip | No | `no-ai,refining` |
 | `refactor-threshold` | Closed issues to check for refactor (N in 1:N+1 ratio) | No | `4` |
 | `create-refactor-issue` | Whether to create new refactor issues | No | `true` |
-| `refactor-issue-template` | Path to custom refactor issue template | No | `.github/REFACTOR_ISSUE_TEMPLATE.md` |
+| `refactor-issue-template` | Path to custom refactor issue template (requires checkout step) | No | None (uses built-in default) |
 | `wait-seconds` | Grace period in seconds before assignment for issue events (schedule/dispatch triggers proceed immediately) | No | `300` |
 
 ### Outputs
@@ -242,8 +242,12 @@ After closing an issue, the system analyzes the last **N** closed issues (N = `r
     github-token: ${{ secrets.COPILOT_ASSIGN_PAT }}
     wait-seconds: '0'  # Assign immediately even for issue events
 
-# Custom refactor template
-- uses: mudman1986/auto-assign-copilot-action@v1.1.0
+# Custom refactor template (requires checkout step)
+- name: Checkout repository
+  uses: actions/checkout@v4
+
+- name: Use custom refactor template
+  uses: mudman1986/auto-assign-copilot-action@v1.1.0
   with:
     github-token: ${{ secrets.COPILOT_ASSIGN_PAT }}
     refactor-issue-template: ".github/templates/custom-refactor.md"
@@ -284,7 +288,22 @@ jobs:
 
 ## Custom Agent Instructions via Templates
 
-Define agent behavior and task scope using a custom template file. Specify the template path using the `refactor-issue-template` input parameter (default: `.github/REFACTOR_ISSUE_TEMPLATE.md`).
+Define agent behavior and task scope using a custom template file. Specify the template path using the `refactor-issue-template` input parameter. If not provided, the action uses built-in default content.
+
+> **Note:** When using a custom template file from your repository, you must include the `actions/checkout` step in your workflow before calling this action to ensure the template file is accessible.
+
+Example workflow:
+
+```yaml
+- name: Checkout repository
+  uses: actions/checkout@v4
+
+- name: Assign Copilot with custom template
+  uses: mudman1986/auto-assign-copilot-action@v1.1.0
+  with:
+    github-token: ${{ secrets.COPILOT_ASSIGN_PAT }}
+    refactor-issue-template: ".github/templates/custom-refactor.md"
+```
 
 Example template content:
 

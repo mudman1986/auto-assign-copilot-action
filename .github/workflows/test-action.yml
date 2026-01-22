@@ -48,6 +48,20 @@ on:
         required: false
         default: '4'
         type: string
+      create-refactor-issue:
+        description: 'Whether to create new refactor issues when none are available'
+        required: false
+        default: true
+        type: boolean
+      refactor-issue-template:
+        description: 'Path to the issue template file for refactor issues'
+        required: false
+        type: string
+      wait-seconds:
+        description: 'Number of seconds to wait before assigning (for issue events)'
+        required: false
+        default: '0'
+        type: string
 
 jobs:
   test-action:
@@ -73,6 +87,9 @@ jobs:
           allow-parent-issues: ${{ inputs.allow-parent-issues || false }}
           skip-labels: ${{ inputs.skip-labels || 'no-ai,refining' }}
           refactor-threshold: ${{ inputs.refactor-threshold || '4' }}
+          create-refactor-issue: ${{ inputs.create-refactor-issue || true }}
+          refactor-issue-template: ${{ inputs.refactor-issue-template || '' }}
+          wait-seconds: ${{ inputs.wait-seconds || '0' }}
 
       - name: Display action outputs
         run: |
@@ -86,6 +103,9 @@ jobs:
           echo "- **Allow Parent Issues**: ${{ inputs.allow-parent-issues || false }}" >> $GITHUB_STEP_SUMMARY
           echo "- **Skip Labels**: ${{ inputs.skip-labels || 'no-ai,refining' }}" >> $GITHUB_STEP_SUMMARY
           echo "- **Refactor Threshold**: ${{ inputs.refactor-threshold || '4' }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **Create Refactor Issue**: ${{ inputs.create-refactor-issue || true }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **Refactor Issue Template**: ${{ inputs.refactor-issue-template || '(none - using default)' }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **Wait Seconds**: ${{ inputs.wait-seconds || '0' }}" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "### Outputs:" >> $GITHUB_STEP_SUMMARY
           echo "- **Assigned Issue Number**: ${{ steps.test-action.outputs.assigned-issue-number }}" >> $GITHUB_STEP_SUMMARY
@@ -154,6 +174,44 @@ jobs:
             refactor-threshold: '2'
             test-name: 'Auto mode with custom refactor threshold'
 
+          # Test with create-refactor-issue disabled
+          - mode: 'refactor'
+            dry-run: true
+            label-override: ''
+            force: false
+            create-refactor-issue: false
+            test-name: 'Refactor mode with create-refactor-issue disabled'
+
+          # Test with custom wait-seconds
+          - mode: 'auto'
+            dry-run: true
+            label-override: ''
+            force: false
+            wait-seconds: '60'
+            test-name: 'Auto mode with custom wait-seconds'
+
+          # Test with custom template (requires checkout)
+          - mode: 'refactor'
+            dry-run: true
+            label-override: ''
+            force: false
+            refactor-issue-template: '.github/REFACTOR_ISSUE_TEMPLATE.md'
+            test-name: 'Refactor mode with custom template'
+
+          # Test without template (uses default content)
+          - mode: 'refactor'
+            dry-run: true
+            label-override: ''
+            force: false
+            test-name: 'Refactor mode with default template content'
+
+          # Test refactor mode with force flag
+          - mode: 'refactor'
+            dry-run: true
+            label-override: ''
+            force: true
+            test-name: 'Refactor mode with force flag'
+
     steps:
       - name: Checkout code
         uses: actions/checkout@v6
@@ -170,6 +228,9 @@ jobs:
           allow-parent-issues: ${{ matrix.allow-parent-issues || false }}
           skip-labels: ${{ matrix.skip-labels || 'no-ai,refining' }}
           refactor-threshold: ${{ matrix.refactor-threshold || '4' }}
+          create-refactor-issue: ${{ matrix.create-refactor-issue || true }}
+          refactor-issue-template: ${{ matrix.refactor-issue-template || '' }}
+          wait-seconds: ${{ matrix.wait-seconds || '0' }}
 
       - name: Verify outputs are set
         run: |

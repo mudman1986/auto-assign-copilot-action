@@ -35469,17 +35469,13 @@ function shouldSkipIssue (issue, allowParentIssues = false, skipLabels = []) {
   if (issue.hasSubIssues && !allowParentIssues) {
     return { shouldSkip: true, reason: 'has sub-issues' }
   }
-  // Check if issue has any of the skip labels
   if (skipLabels.length > 0 && issue.labels) {
     const issueLabels = issue.labels.map((l) => l.name)
     const matchedLabel = skipLabels.find((skipLabel) =>
       issueLabels.includes(skipLabel)
     )
     if (matchedLabel) {
-      return {
-        shouldSkip: true,
-        reason: `has skip label: ${matchedLabel}`
-      }
+      return { shouldSkip: true, reason: `has skip label: ${matchedLabel}` }
     }
   }
   return { shouldSkip: false, reason: null }
@@ -35508,6 +35504,14 @@ function shouldAssignNewIssue (assignedIssues, mode, force) {
     return { shouldAssign: true, reason: 'Copilot has no assigned issues' }
   }
 
+  // Force flag overrides all other checks in both modes
+  if (force) {
+    return {
+      shouldAssign: true,
+      reason: 'Force flag is set'
+    }
+  }
+
   if (mode === 'refactor') {
     // Check if already working on a refactor issue
     const hasRefactorIssue = assignedIssues.some((issue) => {
@@ -35528,13 +35532,6 @@ function shouldAssignNewIssue (assignedIssues, mode, force) {
   }
 
   // Auto mode
-  if (force) {
-    return {
-      shouldAssign: true,
-      reason: 'Force flag is set'
-    }
-  }
-
   return {
     shouldAssign: false,
     reason: 'Copilot already has assigned issues and force=false'
@@ -35554,7 +35551,6 @@ function parseIssueData (issue) {
     url: issue.url,
     body: issue.body || '',
     isAssigned: issue.assignees.nodes.length > 0,
-    // Check for ANY sub-issues (open or closed) - parent issues should not be assigned
     hasSubIssues: issue.trackedIssues?.totalCount > 0,
     isSubIssue: issue.trackedInIssues?.totalCount > 0,
     isRefactorIssue: issue.labels.nodes.some((l) => l.name === 'refactor'),
@@ -35600,8 +35596,7 @@ function hasRecentRefactorIssue (closedIssues, count = 4) {
     return false
   }
 
-  const recentIssues = closedIssues.slice(0, count)
-  return recentIssues.some((issue) => {
+  return closedIssues.slice(0, count).some((issue) => {
     const labels = normalizeIssueLabels(issue)
     return labels.some((label) => label.name === 'refactor')
   })
@@ -35609,7 +35604,7 @@ function hasRecentRefactorIssue (closedIssues, count = 4) {
 
 /**
  * Find an available refactor issue (open, unassigned, with refactor label)
- * @param {Array} issues - Array of issue objects from GraphQL
+ * @param {Array} issues - Array of issue objects from GraphQL (already filtered for refactor label)
  * @param {boolean} allowParentIssues - Whether to allow assigning issues with sub-issues
  * @param {Array<string>} skipLabels - Array of label names to skip
  * @returns {Object|null} - First available refactor issue or null
@@ -35619,20 +35614,13 @@ function findAvailableRefactorIssue (
   allowParentIssues = false,
   skipLabels = []
 ) {
-  // Filter to only refactor-labeled issues
-  const refactorIssues = issues.filter((issue) => {
-    const labels = normalizeIssueLabels(issue)
-    return labels.some((label) => label.name === 'refactor')
-  })
-
-  // Find first assignable refactor issue
-  return findAssignableIssue(refactorIssues, allowParentIssues, skipLabels)
+  return findAssignableIssue(issues, allowParentIssues, skipLabels)
 }
 
 /**
  * Read the content of the refactor issue template file
  * @param {string} templatePath - Path to the template file (relative to workspace root)
- * @returns {string} - Template content or default content if file doesn't exist
+ * @returns {string} - Template content or default content if file doesn't exist or path is empty
  */
 function readRefactorIssueTemplate (templatePath) {
   const defaultContent = [
@@ -35660,6 +35648,12 @@ function readRefactorIssueTemplate (templatePath) {
     '',
     '**Note:** If the scope is too large for a single session, create additional issues with the `refactor` label for remaining work.'
   ].join('\n')
+
+  // If no template path provided, use default content
+  if (!templatePath || templatePath.trim() === '') {
+    console.log('No custom template path provided, using default content')
+    return defaultContent
+  }
 
   try {
     // Resolve the template path relative to the workspace
@@ -35727,7 +35721,7 @@ module.exports = {
  * @param {number} params.refactorThreshold - Number of closed issues to check
  * @param {boolean} params.createRefactorIssue - Whether to create new refactor issues
  * @param {string} params.refactorIssueTemplate - Path to the refactor issue template file
- * @param {number} params.waitSeconds - Number of seconds to wait for issue events
+ * @param {number} params.waitSeconds - Number of seconds to wait for issue events (default: 0)
  */
 module.exports = async ({
   github,
@@ -35741,9 +35735,15 @@ module.exports = async ({
   refactorThreshold,
   createRefactorIssue,
   refactorIssueTemplate,
-  waitSeconds
+  waitSeconds = 0
 }) => {
   const helpers = __nccwpck_require__(6636)
+
+  // Common GraphQL query variables
+  const repoVars = {
+    owner: context.repo.owner,
+    repo: context.repo.repo
+  }
 
   // Wait for grace period if this is an issue event and wait-seconds is configured
   if (context.eventName === 'issues' && waitSeconds > 0) {
@@ -35775,7 +35775,6 @@ module.exports = async ({
       )
       return subIssuesResponse.data.length
     } catch (error) {
-      // Silently handle errors - most issues won't have sub-issues endpoint
       return 0
     }
   }
@@ -35784,10 +35783,8 @@ module.exports = async ({
    * Enriches issues with sub-issue counts from REST API
    * Modifies the issues array in-place by setting issue.trackedIssues.totalCount
    * @param {Array} issues - Array of issue objects
-   * @returns {Promise<void>}
    */
   async function enrichWithSubIssues (issues) {
-    // Use Promise.all for parallel API calls instead of sequential
     await Promise.all(
       issues.map(async (issue) => {
         const totalSubIssues = await getSubIssuesCount(issue.number)
@@ -35823,8 +35820,7 @@ module.exports = async ({
         }
       `,
       {
-        owner: context.repo.owner,
-        repo: context.repo.repo,
+        ...repoVars,
         fetchCount
       }
     )
@@ -35864,10 +35860,7 @@ module.exports = async ({
         }
       }
     `,
-    {
-      owner: context.repo.owner,
-      repo: context.repo.repo
-    }
+    repoVars
   )
 
   const repoId = repoInfo.repository.id
@@ -35909,13 +35902,9 @@ module.exports = async ({
         }
       }
     `,
-    {
-      owner: context.repo.owner,
-      repo: context.repo.repo
-    }
+    repoVars
   )
 
-  // Filter issues to find those assigned to copilot
   const allIssues = allIssuesResponse.repository.issues.nodes
   console.log(`Found ${allIssues.length} total open issues`)
 
@@ -35979,22 +35968,12 @@ module.exports = async ({
                 trackedIssues(first: 1) {
                   totalCount
                 }
-                trackedInIssues(first: 10) {
-                  nodes {
-                    number
-                    title
-                  }
-                  totalCount
-                }
               }
             }
           }
         }
       `,
-      {
-        owner: context.repo.owner,
-        repo: context.repo.repo
-      }
+      repoVars
     )
 
     const refactorIssues = refactorIssuesResponse.repository.issues.nodes
@@ -36090,10 +36069,7 @@ module.exports = async ({
           }
         }
       `,
-      {
-        owner: context.repo.owner,
-        repo: context.repo.repo
-      }
+      repoVars
     )
 
     if (!labelInfo.repository.label) {
@@ -36239,21 +36215,13 @@ module.exports = async ({
                   trackedIssues(first: 1) {
                     totalCount
                   }
-                  trackedInIssues(first: 10) {
-                    nodes {
-                      number
-                      title
-                    }
-                    totalCount
-                  }
                 }
               }
             }
           }
         `,
         {
-          owner: context.repo.owner,
-          repo: context.repo.repo,
+          ...repoVars,
           label
         }
       )
@@ -36305,22 +36273,12 @@ module.exports = async ({
                   trackedIssues(first: 1) {
                     totalCount
                   }
-                  trackedInIssues(first: 10) {
-                    nodes {
-                      number
-                      title
-                    }
-                    totalCount
-                  }
                 }
               }
             }
           }
         `,
-        {
-          owner: context.repo.owner,
-          repo: context.repo.repo
-        }
+        repoVars
       )
 
       // Filter out priority-labeled issues (already checked)
@@ -36750,12 +36708,10 @@ async function run () {
     const dryRun = core.getInput('dry-run') === 'true'
     const allowParentIssues = core.getInput('allow-parent-issues') === 'true'
     const skipLabelsRaw = core.getInput('skip-labels') || 'no-ai,refining'
-    const refactorThresholdRaw = core.getInput('refactor-threshold') || '4'
-    const refactorThreshold = parseInt(refactorThresholdRaw, 10)
-    const createRefactorIssue = core.getInput('create-refactor-issue') === 'true'
-    const refactorIssueTemplate = core.getInput('refactor-issue-template') || '.github/REFACTOR_ISSUE_TEMPLATE.md'
-    const waitSecondsRaw = core.getInput('wait-seconds') || '0'
-    const waitSeconds = parseInt(waitSecondsRaw, 10)
+    const refactorThreshold = parseInt(core.getInput('refactor-threshold') || '4', 10)
+    const createRefactorIssue = core.getInput('create-refactor-issue') !== 'false'
+    const refactorIssueTemplate = core.getInput('refactor-issue-template') || ''
+    const waitSeconds = parseInt(core.getInput('wait-seconds') || '300', 10)
 
     // Parse skip labels from comma-separated string
     const skipLabels = skipLabelsRaw
@@ -36788,10 +36744,8 @@ async function run () {
     })
 
     // Set outputs
-    const assignedIssueNumber = result?.issue?.number?.toString() || ''
-    const assignedIssueUrl = result?.issue?.url || ''
-    core.setOutput('assigned-issue-number', assignedIssueNumber)
-    core.setOutput('assigned-issue-url', assignedIssueUrl)
+    core.setOutput('assigned-issue-number', result?.issue?.number?.toString() || '')
+    core.setOutput('assigned-issue-url', result?.issue?.url || '')
     core.setOutput('assignment-mode', mode)
 
     console.log('✓ Action completed successfully')

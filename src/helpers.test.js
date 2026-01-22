@@ -107,6 +107,36 @@ describe('Auto Assign Copilot Helpers', () => {
       expect(result.reason).toBe('Force flag is set')
     })
 
+    test('should assign in refactor mode when force is true even with existing refactor issue', () => {
+      const assignedIssues = [
+        {
+          labels: { nodes: [{ name: 'refactor' }] }
+        }
+      ]
+      const result = helpers.shouldAssignNewIssue(
+        assignedIssues,
+        'refactor',
+        true
+      )
+      expect(result.shouldAssign).toBe(true)
+      expect(result.reason).toBe('Force flag is set')
+    })
+
+    test('should assign in refactor mode when force is true with non-refactor issues', () => {
+      const assignedIssues = [
+        {
+          labels: { nodes: [{ name: 'bug' }] }
+        }
+      ]
+      const result = helpers.shouldAssignNewIssue(
+        assignedIssues,
+        'refactor',
+        true
+      )
+      expect(result.shouldAssign).toBe(true)
+      expect(result.reason).toBe('Force flag is set')
+    })
+
     test('should not assign when copilot has issues and force is false', () => {
       const assignedIssues = [{ labels: { nodes: [{ name: 'bug' }] } }]
       const result = helpers.shouldAssignNewIssue(
@@ -272,6 +302,19 @@ describe('Auto Assign Copilot Helpers', () => {
       expect(result).toContain('Review the codebase and identify opportunities')
       expect(result).toContain('Code quality and maintainability')
       expect(fs.existsSync).toHaveBeenCalled()
+    })
+
+    test('should return default content when no template path is provided', () => {
+      // Mock file system methods using jest.spyOn
+      const existsSpy = jest.spyOn(fs, 'existsSync')
+      const readSpy = jest.spyOn(fs, 'readFileSync')
+
+      const result = helpers.readRefactorIssueTemplate('')
+      expect(result).toContain('Review the codebase and identify opportunities')
+      expect(result).toContain('Code quality and maintainability')
+      // Should not attempt to read file when no path provided
+      expect(existsSpy).not.toHaveBeenCalled()
+      expect(readSpy).not.toHaveBeenCalled()
     })
 
     test('should return default content when reading template fails', () => {
