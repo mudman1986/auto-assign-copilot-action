@@ -54,6 +54,14 @@ npx standard
 
 ### Testing
 
+**This project follows Test-Driven Development (TDD) principles.**
+
+When implementing new features or fixing bugs:
+1. **Write tests first** that define the expected behavior
+2. **Verify tests fail** with the current implementation
+3. **Implement the minimal code** to make tests pass
+4. **Refactor** while keeping tests green
+
 Run all tests:
 ```bash
 npm test
@@ -62,6 +70,11 @@ npm test
 Run specific test file:
 ```bash
 npm test -- src/release.test.js
+```
+
+Run tests in watch mode during development:
+```bash
+npm test -- --watch
 ```
 
 ### Building

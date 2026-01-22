@@ -196,6 +196,20 @@ To prevent creating too many auto-generated refactor issues in rapid succession:
 - This prevents loops where closing a refactor issue immediately creates a new one
 - The cooldown only applies to auto-created issues; manually assigned refactor issues can still be assigned at any time
 
+### Cooldown and Threshold Interaction
+
+**Important:** When the refactor threshold is reached (no refactor issues in the last N closed issues), the cooldown is automatically bypassed:
+
+- **Threshold reached** → Cooldown is ignored, refactor issue is always created/assigned
+  - This ensures the desired refactor ratio is maintained
+  - Example: If the last 4 closed issues have no refactor label, a refactor issue is created immediately, even if one was recently closed
+
+- **Threshold NOT reached** → Cooldown is respected
+  - Example: When running on a schedule and no regular issues are available, the action will respect the cooldown before creating a new refactor issue
+  - Example: When explicitly running in refactor mode via workflow_dispatch, the cooldown applies normally
+
+This design ensures that the refactor threshold takes priority over the cooldown, maintaining the desired refactor-to-regular-issue ratio while still preventing excessive refactor issue creation in other scenarios.
+
 ---
 
 ## Examples
