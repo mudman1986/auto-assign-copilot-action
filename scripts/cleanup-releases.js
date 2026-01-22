@@ -9,6 +9,15 @@ const { getOctokit } = require('@actions/github')
 const { filterReleasesToKeep } = require('../src/release-cleanup')
 
 /**
+ * Calculate age of a release in days
+ * @param {string} publishedAt - ISO date string
+ * @returns {number} - Age in days
+ */
+function getReleaseDays (publishedAt) {
+  return Math.floor((Date.now() - new Date(publishedAt)) / (1000 * 60 * 60 * 24))
+}
+
+/**
  * Main function to cleanup releases
  */
 async function cleanupReleases () {
@@ -56,7 +65,7 @@ async function cleanupReleases () {
     releasesToKeep
       .sort((a, b) => b.tag_name.localeCompare(a.tag_name))
       .forEach(r => {
-        const age = Math.floor((Date.now() - new Date(r.published_at)) / (1000 * 60 * 60 * 24))
+        const age = getReleaseDays(r.published_at)
         console.log(`  - ${r.tag_name} (published ${age} days ago)`)
       })
 
@@ -72,7 +81,7 @@ async function cleanupReleases () {
     releasesToDelete
       .sort((a, b) => b.tag_name.localeCompare(a.tag_name))
       .forEach(r => {
-        const age = Math.floor((Date.now() - new Date(r.published_at)) / (1000 * 60 * 60 * 24))
+        const age = getReleaseDays(r.published_at)
         console.log(`  - ${r.tag_name} (published ${age} days ago)`)
       })
 

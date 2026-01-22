@@ -35,13 +35,12 @@ async function run () {
 
     // Parse and validate skip labels (V06: Label Array Validation)
     const skipLabelsRaw = core.getInput('skip-labels') || 'no-ai,refining'
-    const skipLabelsParsed = skipLabelsRaw
-      .split(',')
-      .map((label) => label.trim())
-      .filter((label) => label.length > 0)
-    const skipLabels = validateLabelArray(skipLabelsParsed, 50)
+    const skipLabels = validateLabelArray(
+      skipLabelsRaw.split(',').map(l => l.trim()).filter(l => l.length > 0),
+      50
+    )
 
-    console.log(`Running auto-assign-copilot action (mode: ${mode}, force: ${force}, dryRun: ${dryRun})`)
+    core.info(`Running auto-assign-copilot action (mode: ${mode}, force: ${force}, dryRun: ${dryRun})`)
 
     // Create authenticated Octokit client
     const octokit = github.getOctokit(token)
@@ -69,10 +68,10 @@ async function run () {
     core.setOutput('assigned-issue-url', result?.issue?.url || '')
     core.setOutput('assignment-mode', mode)
 
-    console.log('✓ Action completed successfully')
+    core.info('✓ Action completed successfully')
   } catch (error) {
     core.setFailed(`Action failed: ${error.message}`)
-    console.error(error)
+    core.error(error.stack || error.message)
   }
 }
 

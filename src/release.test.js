@@ -75,38 +75,30 @@ describe('Release Configuration', () => {
   })
 
   describe('conventional commits release rules', () => {
-    test('should release minor version for feat commits', () => {
-      const commitAnalyzer = config.plugins.find(p =>
+    let commitAnalyzer
+
+    beforeAll(() => {
+      commitAnalyzer = config.plugins.find(p =>
         Array.isArray(p) && p[0] === '@semantic-release/commit-analyzer'
       )
+    })
 
+    test('should release minor version for feat commits', () => {
       const featRule = commitAnalyzer[1].releaseRules.find(r => r.type === 'feat')
       expect(featRule.release).toBe('minor')
     })
 
     test('should release patch version for fix commits', () => {
-      const commitAnalyzer = config.plugins.find(p =>
-        Array.isArray(p) && p[0] === '@semantic-release/commit-analyzer'
-      )
-
       const fixRule = commitAnalyzer[1].releaseRules.find(r => r.type === 'fix')
       expect(fixRule.release).toBe('patch')
     })
 
     test('should not release for chore commits', () => {
-      const commitAnalyzer = config.plugins.find(p =>
-        Array.isArray(p) && p[0] === '@semantic-release/commit-analyzer'
-      )
-
       const choreRule = commitAnalyzer[1].releaseRules.find(r => r.type === 'chore')
       expect(choreRule.release).toBe(false)
     })
 
     test('should release patch version for refactor commits', () => {
-      const commitAnalyzer = config.plugins.find(p =>
-        Array.isArray(p) && p[0] === '@semantic-release/commit-analyzer'
-      )
-
       const refactorRule = commitAnalyzer[1].releaseRules.find(r => r.type === 'refactor')
       expect(refactorRule.release).toBe('patch')
     })

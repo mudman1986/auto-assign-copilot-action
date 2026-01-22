@@ -5,6 +5,7 @@
  * These tests demonstrate potential vulnerabilities and validate security controls
  */
 
+const core = require('@actions/core')
 const helpers = require('./helpers.js')
 const path = require('path')
 const fs = require('fs')
@@ -243,11 +244,11 @@ describe('Security Tests - Timing Attacks', () => {
 })
 
 describe('Security Tests - Information Disclosure', () => {
-  test('should not expose sensitive data in console logs', () => {
-    // Mock console.log to capture output
+  test('should not expose sensitive data in logs', () => {
+    // Mock core.info to capture output
     const logs = []
-    const originalLog = console.log
-    console.log = (...args) => logs.push(args.join(' '))
+    const originalInfo = core.info
+    core.info = (...args) => logs.push(args.join(' '))
 
     try {
       helpers.readRefactorIssueTemplate('')
@@ -261,7 +262,7 @@ describe('Security Tests - Information Disclosure', () => {
         expect(log).not.toMatch(/github_pat_/)
       })
     } finally {
-      console.log = originalLog
+      core.info = originalInfo
     }
   })
 })
