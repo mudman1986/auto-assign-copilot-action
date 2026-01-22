@@ -37,6 +37,7 @@
 <td width="33%" valign="top">
 
 ### Safety & Control
+- **Access control**: Require labeled approval before assignment (only users with write access can add labels)
 - **Dry run mode**: Preview agent decisions without executing
 - **Label-based filtering**: Skip issues marked for human attention
 - **Override capability**: Manual control when needed
@@ -123,6 +124,7 @@ The action will autonomously assign issues to Copilot based on intelligent prior
 | **`github-token`** | PAT from an account with GitHub Copilot license (requires read access to metadata, read/write access to actions, code, issues, and pull requests) | ✅ Yes | - |
 | `mode` | Assignment mode: `auto` or `refactor` | No | `auto` |
 | `label-override` | Specific label to filter (auto mode only) | No | `""` |
+| `required-label` | **Security feature**: Label that must be present on an issue before it is eligible for auto-assignment. Only users with write access can add labels, providing access control. Leave empty to disable. | No | `""` |
 | `force` | Force assignment even if Copilot has issues | No | `false` |
 | `dry-run` | Preview mode - no actual changes | No | `false` |
 | `allow-parent-issues` | Allow issues with sub-issues | No | `false` |
@@ -248,6 +250,12 @@ This design ensures that the refactor threshold takes priority over the cooldown
 ### Advanced Configurations
 
 ```yaml
+# Require label approval for security (recommended for public repos)
+- uses: mudman1986/auto-assign-copilot-action@v1.3.2
+  with:
+    github-token: ${{ secrets.COPILOT_ASSIGN_PAT }}
+    required-label: "copilot-approved"
+
 # Custom skip labels and allow parent issues
 - uses: mudman1986/auto-assign-copilot-action@v1.3.2
   with:
@@ -373,6 +381,32 @@ Review the codebase and identify opportunities for improvement.
 ---
 
 ## Security
+
+### Access Control for Public Repositories
+
+**Issue Assignment Security**: Use the `required-label` input to control which issues can be auto-assigned to Copilot.
+
+**How it works:**
+- Only users with **write access** (triage role or higher) can add/remove labels on issues
+- Public repository users cannot add labels to issues
+- By requiring a specific label (e.g., `copilot-approved`), you ensure only maintainers can approve issues for Copilot
+
+**Example configuration:**
+```yaml
+- uses: mudman1986/auto-assign-copilot-action@v1.3.2
+  with:
+    github-token: ${{ secrets.COPILOT_ASSIGN_PAT }}
+    required-label: "copilot-approved"  # Only assign issues with this label
+```
+
+**Workflow:**
+1. Anyone can create an issue in your repository
+2. A maintainer reviews the issue
+3. If appropriate, the maintainer adds the `copilot-approved` label
+4. The action will only consider issues with this label for assignment
+5. Without the label, issues are ignored by the auto-assignment process
+
+**Default behavior**: If `required-label` is not set (empty string), all issues are eligible for assignment (backward compatible).
 
 ### Path Validation
 
