@@ -131,6 +131,7 @@ The action will autonomously assign issues to Copilot based on intelligent prior
 | `create-refactor-issue` | Whether to create new refactor issues | No | `true` |
 | `refactor-issue-template` | Path to custom refactor issue template (requires checkout step) | No | None (uses built-in default) |
 | `wait-seconds` | Grace period in seconds before assignment for issue events (schedule/dispatch triggers proceed immediately) | No | `300` |
+| `refactor-cooldown-days` | Days to wait before creating a new auto-created refactor issue if the last closed issue was an auto-created refactor issue | No | `7` |
 
 ### Outputs
 
@@ -177,13 +178,22 @@ graph TD
 
 1. Search for existing unassigned refactor tasks
 2. Assign first available task to agent
-3. If none found → autonomously generate new refactor task (if enabled)
+3. If none found → autonomously generate new refactor task (if enabled and cooldown period has passed)
 
 ### Adaptive Refactor Ratio
 
 After closing an issue, the system analyzes the last **N** closed issues (N = `refactor-threshold`):
 - If **none** have `refactor` label → autonomously switches to refactor mode
 - Maintains **1 in N+1** ratio (default: 1 in 5 issues) for balanced workload
+
+### Refactor Issue Cooldown
+
+To prevent creating too many auto-generated refactor issues in rapid succession:
+- Auto-created refactor issues are marked with `[AUTO]` in the title
+- After an auto-created refactor issue is closed, the system waits for a configurable cooldown period (default: 7 days) before creating another one
+- Manually created refactor issues (without `[AUTO]` marker) are not subject to this cooldown
+- This prevents loops where closing a refactor issue immediately creates a new one
+- The cooldown only applies to auto-created issues; manually assigned refactor issues can still be assigned at any time
 
 ---
 
@@ -257,6 +267,12 @@ After closing an issue, the system analyzes the last **N** closed issues (N = `r
   with:
     github-token: ${{ secrets.COPILOT_ASSIGN_PAT }}
     create-refactor-issue: false
+
+# Custom refactor cooldown (14 days instead of default 7)
+- uses: mudman1986/auto-assign-copilot-action@v1.1.0
+  with:
+    github-token: ${{ secrets.COPILOT_ASSIGN_PAT }}
+    refactor-cooldown-days: '14'
 ```
 
 ### Manual Workflow Dispatch

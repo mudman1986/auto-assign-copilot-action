@@ -42,6 +42,16 @@ const createMockGithub = (overrides = {}) => {
           }
         }
       }
+      if (query.includes('issues(first: 20, states: CLOSED')) {
+        // Mock response for recent closed issues (for cooldown check)
+        return {
+          repository: {
+            issues: {
+              nodes: []
+            }
+          }
+        }
+      }
       if (query.includes('states: OPEN, labels: ["refactor"]')) {
         return {
           repository: {
