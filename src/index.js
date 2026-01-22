@@ -8,6 +8,7 @@
 const core = require('@actions/core')
 const github = require('@actions/github')
 const executeWorkflow = require('./workflow.js')
+const { validatePositiveInteger, validateLabelName, validateLabelArray } = require('./validation.js')
 
 /**
  * Main action execution
@@ -17,22 +18,27 @@ async function run () {
     // Get inputs from action.yml
     const token = core.getInput('github-token', { required: true })
     const mode = core.getInput('mode') || 'auto'
-    const labelOverride = core.getInput('label-override') || null
     const force = core.getInput('force') === 'true'
     const dryRun = core.getInput('dry-run') === 'true'
     const allowParentIssues = core.getInput('allow-parent-issues') === 'true'
-    const skipLabelsRaw = core.getInput('skip-labels') || 'no-ai,refining'
-    const refactorThreshold = parseInt(core.getInput('refactor-threshold') || '4', 10)
     const createRefactorIssue = core.getInput('create-refactor-issue') !== 'false'
     const refactorIssueTemplate = core.getInput('refactor-issue-template') || ''
-    const waitSeconds = parseInt(core.getInput('wait-seconds') || '300', 10)
-    const refactorCooldownDays = parseInt(core.getInput('refactor-cooldown-days') || '7', 10)
 
-    // Parse skip labels from comma-separated string
-    const skipLabels = skipLabelsRaw
+    // Validate label override (V02: GraphQL Injection Prevention)
+    const labelOverride = validateLabelName(core.getInput('label-override'))
+
+    // Validate numeric inputs with bounds checking (V01: Integer Overflow Prevention)
+    const refactorThreshold = validatePositiveInteger(core.getInput('refactor-threshold'), '4', 1, 100)
+    const waitSeconds = validatePositiveInteger(core.getInput('wait-seconds'), '300', 0, 3600)
+    const refactorCooldownDays = validatePositiveInteger(core.getInput('refactor-cooldown-days'), '7', 0, 365)
+
+    // Parse and validate skip labels (V06: Label Array Validation)
+    const skipLabelsRaw = core.getInput('skip-labels') || 'no-ai,refining'
+    const skipLabelsParsed = skipLabelsRaw
       .split(',')
       .map((label) => label.trim())
       .filter((label) => label.length > 0)
+    const skipLabels = validateLabelArray(skipLabelsParsed, 50)
 
     console.log(`Running auto-assign-copilot action (mode: ${mode}, force: ${force}, dryRun: ${dryRun})`)
 

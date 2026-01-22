@@ -334,6 +334,7 @@ describe('Auto Assign Copilot Helpers', () => {
       process.env.GITHUB_WORKSPACE = mockWorkspace
 
       jest.spyOn(fs, 'existsSync').mockReturnValue(true)
+      jest.spyOn(fs, 'statSync').mockReturnValue({ size: 1024 }) // Mock file size within limits
       jest.spyOn(fs, 'readFileSync').mockReturnValue('test content')
 
       helpers.readRefactorIssueTemplate('.github/template.md')
@@ -341,6 +342,7 @@ describe('Auto Assign Copilot Helpers', () => {
       // Verify the path resolution
       const expectedPath = path.resolve(mockWorkspace, '.github/template.md')
       expect(fs.existsSync).toHaveBeenCalledWith(expectedPath)
+      expect(fs.statSync).toHaveBeenCalledWith(expectedPath)
       expect(fs.readFileSync).toHaveBeenCalledWith(expectedPath, 'utf8')
     })
 
