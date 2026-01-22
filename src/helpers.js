@@ -163,21 +163,6 @@ function hasRecentRefactorIssue (closedIssues, count = 4) {
 }
 
 /**
- * Find an available refactor issue (open, unassigned, with refactor label)
- * @param {Array} issues - Array of issue objects from GraphQL (already filtered for refactor label)
- * @param {boolean} allowParentIssues - Whether to allow assigning issues with sub-issues
- * @param {Array<string>} skipLabels - Array of label names to skip
- * @returns {Object|null} - First available refactor issue or null
- */
-function findAvailableRefactorIssue (
-  issues,
-  allowParentIssues = false,
-  skipLabels = []
-) {
-  return findAssignableIssue(issues, allowParentIssues, skipLabels)
-}
-
-/**
  * Read the content of the refactor issue template file
  * @param {string} templatePath - Path to the template file (relative to workspace root)
  * @returns {string} - Template content or default content if file doesn't exist or path is empty
@@ -210,7 +195,7 @@ function readRefactorIssueTemplate (templatePath) {
   ].join('\n')
 
   // If no template path provided, use default content
-  if (!templatePath || templatePath.trim() === '') {
+  if (!templatePath?.trim()) {
     console.log('No custom template path provided, using default content')
     return defaultContent
   }
@@ -221,9 +206,7 @@ function readRefactorIssueTemplate (templatePath) {
     const absolutePath = path.resolve(workspaceRoot, templatePath)
 
     // Validate that the resolved path is within the workspace to prevent directory traversal
-    const normalizedWorkspace = path.resolve(workspaceRoot)
-    const normalizedPath = path.resolve(absolutePath)
-    const relativePath = path.relative(normalizedWorkspace, normalizedPath)
+    const relativePath = path.relative(workspaceRoot, absolutePath)
 
     // Check if the relative path escapes the workspace (contains '..' or is absolute)
     if (relativePath.startsWith('..') || path.isAbsolute(relativePath)) {
@@ -310,7 +293,6 @@ module.exports = {
   findAssignableIssue,
   normalizeIssueLabels,
   hasRecentRefactorIssue,
-  findAvailableRefactorIssue,
   readRefactorIssueTemplate,
   isAutoCreatedRefactorIssue,
   shouldWaitForCooldown

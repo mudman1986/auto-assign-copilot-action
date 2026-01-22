@@ -39,13 +39,10 @@ async function run () {
     // Create authenticated Octokit client
     const octokit = github.getOctokit(token)
 
-    // Get the context
-    const context = github.context
-
     // Execute the workflow logic
     const result = await executeWorkflow({
       github: octokit,
-      context,
+      context: github.context,
       mode,
       labelOverride,
       force,

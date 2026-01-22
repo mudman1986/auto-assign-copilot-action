@@ -90,6 +90,38 @@ module.exports = async ({
     )
   }
 
+  /**
+   * Assign Copilot to an issue
+   * @param {string} issueId - The GraphQL ID of the issue
+   * @returns {Promise<void>}
+   */
+  async function assignCopilotToIssue (issueId) {
+    await github.graphql(
+      `
+        mutation($issueId: ID!, $assigneeIds: [ID!]!) {
+          addAssigneesToAssignable(
+            input: {
+              assignableId: $issueId,
+              assigneeIds: $assigneeIds
+            }
+          ) {
+            assignable {
+              ... on Issue {
+                assignees(first: 10) {
+                  nodes { login }
+                }
+              }
+            }
+          }
+        }
+      `,
+      {
+        issueId,
+        assigneeIds: [copilotBotId]
+      }
+    )
+  }
+
   // Step 0: Determine mode based on recent closed issues (for issue close events)
   let effectiveMode = mode
   if (context.eventName === 'issues' && mode === 'auto') {
@@ -168,9 +200,8 @@ module.exports = async ({
     throw new Error('Copilot bot agent not found in suggestedActors')
   }
   const copilotBotId = copilotBot.id
-  const copilotLogin = copilotBot.login
   console.log(
-    `Found Copilot bot: login="${copilotLogin}", id="${copilotBotId}"`
+    `Found Copilot bot: login="${copilotBot.login}", id="${copilotBotId}"`
   )
 
   // Step 2: Check if Copilot is already assigned to an issue
@@ -206,10 +237,7 @@ module.exports = async ({
   console.log(`Found ${allIssues.length} total open issues`)
 
   const currentIssues = allIssues.filter((issue) =>
-    issue.assignees.nodes.some(
-      (assignee) =>
-        assignee.login === copilotLogin || assignee.id === copilotBotId
-    )
+    issue.assignees.nodes.some((assignee) => assignee.id === copilotBotId)
   )
 
   if (currentIssues.length > 0) {
@@ -232,11 +260,11 @@ module.exports = async ({
   // Step 3: Handle different modes
   if (effectiveMode === 'refactor') {
     return handleRefactorMode()
-  } else if (effectiveMode === 'auto') {
-    return assignNextIssue(labelOverride)
-  } else {
-    throw new Error(`Unknown mode: ${effectiveMode}`)
   }
+  if (effectiveMode === 'auto') {
+    return assignNextIssue(labelOverride)
+  }
+  throw new Error(`Unknown mode: ${effectiveMode}`)
 
   /**
    * Handle refactor mode: assign existing refactor issue or create new one
@@ -282,7 +310,7 @@ module.exports = async ({
     await enrichWithSubIssues(refactorIssues)
 
     // Try to find an assignable refactor issue
-    const availableRefactorIssue = helpers.findAvailableRefactorIssue(
+    const availableRefactorIssue = helpers.findAssignableIssue(
       refactorIssues,
       allowParentIssues,
       skipLabels
@@ -296,7 +324,7 @@ module.exports = async ({
       // Assign the existing refactor issue to Copilot
       if (dryRun) {
         console.log(
-          `[DRY RUN] Would assign refactor issue #${availableRefactorIssue.number} to Copilot (ID: ${copilotBotId})`
+          `[DRY RUN] Would assign refactor issue #${availableRefactorIssue.number} to Copilot`
         )
         console.log(`[DRY RUN] Issue URL: ${availableRefactorIssue.url}`)
         return { issue: availableRefactorIssue }
@@ -306,30 +334,7 @@ module.exports = async ({
         `Assigning refactor issue #${availableRefactorIssue.number} to Copilot...`
       )
 
-      await github.graphql(
-        `
-          mutation($issueId: ID!, $assigneeIds: [ID!]!) {
-            addAssigneesToAssignable(
-              input: {
-                assignableId: $issueId,
-                assigneeIds: $assigneeIds
-              }
-            ) {
-              assignable {
-                ... on Issue {
-                  assignees(first: 10) {
-                    nodes { login }
-                  }
-                }
-              }
-            }
-          }
-        `,
-        {
-          issueId: availableRefactorIssue.id,
-          assigneeIds: [copilotBotId]
-        }
-      )
+      await assignCopilotToIssue(availableRefactorIssue.id)
 
       console.log(
         `✓ Successfully assigned refactor issue #${availableRefactorIssue.number} to Copilot`
@@ -422,9 +427,7 @@ module.exports = async ({
       console.log(
         `[DRY RUN] Would create refactor issue with title: ${issueTitle}`
       )
-      console.log(
-        `[DRY RUN] Would assign to Copilot bot (ID: ${copilotBotId})`
-      )
+      console.log('[DRY RUN] Would assign to Copilot bot')
       // Return a mock issue for dry-run mode
       return {
         issue: {
@@ -468,7 +471,6 @@ module.exports = async ({
     console.log(`Created Copilot-assigned issue: ${res.createIssue.issue.url}`)
 
     // Add refactor label to the issue
-    const issueId = res.createIssue.issue.id
     try {
       await github.graphql(
         `
@@ -492,7 +494,7 @@ module.exports = async ({
           }
         `,
         {
-          issueId,
+          issueId: res.createIssue.issue.id,
           labelIds: [refactorLabelId]
         }
       )
@@ -665,7 +667,7 @@ module.exports = async ({
     // Assign the issue to Copilot
     if (dryRun) {
       console.log(
-        `[DRY RUN] Would assign issue #${issueToAssign.number} to Copilot (ID: ${copilotBotId})`
+        `[DRY RUN] Would assign issue #${issueToAssign.number} to Copilot`
       )
       console.log(`[DRY RUN] Issue title: ${issueToAssign.title}`)
       console.log(`[DRY RUN] Issue URL: ${issueToAssign.url}`)
@@ -674,30 +676,7 @@ module.exports = async ({
 
     console.log(`Assigning issue #${issueToAssign.number} to Copilot...`)
 
-    await github.graphql(
-      `
-        mutation($issueId: ID!, $assigneeIds: [ID!]!) {
-          addAssigneesToAssignable(
-            input: {
-              assignableId: $issueId,
-              assigneeIds: $assigneeIds
-            }
-          ) {
-            assignable {
-              ... on Issue {
-                assignees(first: 10) {
-                  nodes { login }
-                }
-              }
-            }
-          }
-        }
-      `,
-      {
-        issueId: issueToAssign.id,
-        assigneeIds: [copilotBotId]
-      }
-    )
+    await assignCopilotToIssue(issueToAssign.id)
 
     console.log(
       `✓ Successfully assigned issue #${issueToAssign.number} to Copilot`
