@@ -528,5 +528,24 @@ describe('Auto Assign Copilot Helpers', () => {
       const result2 = helpers.shouldWaitForCooldown(issues, 5)
       expect(result2.shouldWait).toBe(true)
     })
+
+    test('should not wait when cooldown is set to 0 (disabled)', () => {
+      const oneDayAgo = new Date()
+      oneDayAgo.setDate(oneDayAgo.getDate() - 1)
+
+      const issues = [
+        {
+          number: 42,
+          title: 'refactor: codebase improvements [AUTO] - 2024-01-01',
+          closedAt: oneDayAgo.toISOString(),
+          labels: { nodes: [{ name: 'refactor' }] }
+        }
+      ]
+
+      // With 0 day cooldown, should never wait (cooldown disabled)
+      const result = helpers.shouldWaitForCooldown(issues, 0)
+      expect(result.shouldWait).toBe(false)
+      expect(result.reason).toContain('No auto-created refactor issue found')
+    })
   })
 })

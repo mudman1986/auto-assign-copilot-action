@@ -50,7 +50,7 @@ inputs:
     required: false
     default: "300"
   refactor-cooldown-days:
-    description: "Number of days to wait before creating a new auto-created refactor issue if the last closed issue was an auto-created refactor issue. Default: 7 days"
+    description: "Number of days to wait before creating a new auto-created refactor issue if any auto-created refactor issue was closed within this timeframe. Set to 0 to disable cooldown. Default: 7 days"
     required: false
     default: "7"
 

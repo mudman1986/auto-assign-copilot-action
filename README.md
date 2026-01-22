@@ -131,7 +131,7 @@ The action will autonomously assign issues to Copilot based on intelligent prior
 | `create-refactor-issue` | Whether to create new refactor issues | No | `true` |
 | `refactor-issue-template` | Path to custom refactor issue template (requires checkout step) | No | None (uses built-in default) |
 | `wait-seconds` | Grace period in seconds before assignment for issue events (schedule/dispatch triggers proceed immediately) | No | `300` |
-| `refactor-cooldown-days` | Days to wait before creating a new auto-created refactor issue if the last closed issue was an auto-created refactor issue | No | `7` |
+| `refactor-cooldown-days` | Days to wait before creating a new auto-created refactor issue if any auto-created refactor issue was closed within this timeframe. Set to 0 to disable cooldown | No | `7` |
 
 ### Outputs
 
@@ -274,6 +274,12 @@ To prevent creating too many auto-generated refactor issues in rapid succession:
   with:
     github-token: ${{ secrets.COPILOT_ASSIGN_PAT }}
     refactor-cooldown-days: '14'
+
+# Disable refactor cooldown (allow immediate creation)
+- uses: mudman1986/auto-assign-copilot-action@v1.1.0
+  with:
+    github-token: ${{ secrets.COPILOT_ASSIGN_PAT }}
+    refactor-cooldown-days: '0'
 ```
 
 ### Manual Workflow Dispatch
