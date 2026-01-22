@@ -34,7 +34,7 @@
           ]
         },
         "writerOpts": {
-          "commitPartial": "* {{#if scope}}**{{scope}}:** {{/if}}{{subject}}\n\n{{~#if body}}{{body}}\n\n{{/if}}"
+          "commitPartial": "* {{#if scope}}**{{scope}}:** {{/if}}{{subject}}"
         }
       }
     ],
