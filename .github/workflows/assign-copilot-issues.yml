@@ -63,6 +63,9 @@ jobs:
   assign-issue:
     runs-on: ubuntu-latest
     steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
       - name: Assign Copilot to issue
         uses: mudman1986/auto-assign-copilot-action@v1.3.1
         with:
