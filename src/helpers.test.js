@@ -550,4 +550,62 @@ describe('Auto Assign Copilot Helpers', () => {
       expect(result.reason).toContain('No auto-created refactor issue found')
     })
   })
+
+  describe('hasRequiredLabel', () => {
+    test('should return true when no required label is specified', () => {
+      const issue = {
+        labels: [{ name: 'bug' }, { name: 'enhancement' }]
+      }
+      const result = helpers.hasRequiredLabel(issue, null)
+      expect(result).toBe(true)
+    })
+
+    test('should return true when no required label is specified (empty string)', () => {
+      const issue = {
+        labels: [{ name: 'bug' }, { name: 'enhancement' }]
+      }
+      const result = helpers.hasRequiredLabel(issue, '')
+      expect(result).toBe(true)
+    })
+
+    test('should return true when issue has the required label', () => {
+      const issue = {
+        labels: [{ name: 'bug' }, { name: 'copilot-ready' }]
+      }
+      const result = helpers.hasRequiredLabel(issue, 'copilot-ready')
+      expect(result).toBe(true)
+    })
+
+    test('should return false when issue does not have the required label', () => {
+      const issue = {
+        labels: [{ name: 'bug' }, { name: 'enhancement' }]
+      }
+      const result = helpers.hasRequiredLabel(issue, 'copilot-ready')
+      expect(result).toBe(false)
+    })
+
+    test('should return false when issue has no labels', () => {
+      const issue = {
+        labels: []
+      }
+      const result = helpers.hasRequiredLabel(issue, 'copilot-ready')
+      expect(result).toBe(false)
+    })
+
+    test('should handle issues with GraphQL label structure', () => {
+      const issue = {
+        labels: { nodes: [{ name: 'bug' }, { name: 'copilot-ready' }] }
+      }
+      const result = helpers.hasRequiredLabel(issue, 'copilot-ready')
+      expect(result).toBe(true)
+    })
+
+    test('should be case-sensitive when matching labels', () => {
+      const issue = {
+        labels: [{ name: 'Copilot-Ready' }]
+      }
+      const result = helpers.hasRequiredLabel(issue, 'copilot-ready')
+      expect(result).toBe(false)
+    })
+  })
 })

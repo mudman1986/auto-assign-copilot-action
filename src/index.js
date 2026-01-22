@@ -26,6 +26,7 @@ async function run () {
 
     // Validate label override (V02: GraphQL Injection Prevention)
     const labelOverride = validateLabelName(core.getInput('label-override'))
+    const requiredLabel = validateLabelName(core.getInput('required-label'))
 
     // Validate numeric inputs with bounds checking (V01: Integer Overflow Prevention)
     const refactorThreshold = validatePositiveInteger(core.getInput('refactor-threshold'), '4', 1, 100)
@@ -51,6 +52,7 @@ async function run () {
       context: github.context,
       mode,
       labelOverride,
+      requiredLabel,
       force,
       dryRun,
       allowParentIssues,
