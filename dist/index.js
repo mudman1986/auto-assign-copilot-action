@@ -35680,7 +35680,7 @@ function readRefactorIssueTemplate (templatePath) {
  * @returns {boolean} - True if issue was auto-created
  */
 function isAutoCreatedRefactorIssue (issue) {
-  return issue?.title?.includes('[AUTO]') || false
+  return issue?.title?.includes('[AUTO]') ?? false
 }
 
 /**
