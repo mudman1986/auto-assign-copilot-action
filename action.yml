@@ -3,8 +3,8 @@ description: "Automatically assigns GitHub Copilot to issues based on priority l
 author: "mudman1986"
 
 branding:
-  icon: "user-check"
-  color: "blue"
+  icon: "zap"
+  color: "purple"
 
 inputs:
   github-token:
@@ -61,4 +61,5 @@ outputs:
 
 runs:
   using: "node20"
+
   main: "dist/index.js"
