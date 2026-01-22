@@ -104,6 +104,7 @@ function shouldAssignNewIssue (assignedIssues, mode, force) {
  * @returns {Object} - Parsed issue with boolean flags
  */
 function parseIssueData (issue) {
+  const labels = normalizeIssueLabels(issue)
   return {
     id: issue.id,
     number: issue.number,
@@ -113,8 +114,8 @@ function parseIssueData (issue) {
     isAssigned: issue.assignees.nodes.length > 0,
     hasSubIssues: issue.trackedIssues?.totalCount > 0,
     isSubIssue: issue.trackedInIssues?.totalCount > 0,
-    isRefactorIssue: issue.labels.nodes.some((l) => l.name === 'refactor'),
-    labels: issue.labels.nodes
+    isRefactorIssue: labels.some((l) => l.name === 'refactor'),
+    labels
   }
 }
 
@@ -172,6 +173,48 @@ function hasRecentRefactorIssue (closedIssues, count = 4) {
 }
 
 /**
+ * Validate template path for security
+ * @param {string} templatePath - Path to validate
+ * @param {string} workspaceRoot - Workspace root directory
+ * @returns {string|null} - Absolute path if valid, null if invalid
+ */
+function validateTemplatePath (templatePath, workspaceRoot) {
+  // Reject absolute paths immediately (V03: Path Traversal)
+  if (path.isAbsolute(templatePath)) {
+    console.log(`Template path ${templatePath} is absolute, using default content`)
+    return null
+  }
+
+  // Reject UNC paths (Windows network shares) (V03: Path Traversal)
+  if (templatePath.startsWith('\\\\')) {
+    console.log(`Template path ${templatePath} is a UNC path, using default content`)
+    return null
+  }
+
+  // Resolve the template path relative to the workspace
+  const absolutePath = path.resolve(workspaceRoot, templatePath)
+
+  // Validate that the resolved path is within the workspace to prevent directory traversal
+  const relativePath = path.relative(workspaceRoot, absolutePath)
+
+  // Check if the relative path escapes the workspace (contains '..' or is absolute)
+  if (relativePath.startsWith('..') || path.isAbsolute(relativePath)) {
+    console.log(`Template path ${templatePath} is outside workspace, using default content`)
+    return null
+  }
+
+  // Validate file extension whitelist (V03: File Extension Validation)
+  const allowedExtensions = ['.md', '.txt']
+  const ext = path.extname(absolutePath).toLowerCase()
+  if (!allowedExtensions.includes(ext)) {
+    console.log(`Template file extension ${ext} not allowed, using default content`)
+    return null
+  }
+
+  return absolutePath
+}
+
+/**
  * Read the content of the refactor issue template file
  * Enhanced with additional security validations (V03: Path Traversal Protection)
  * @param {string} templatePath - Path to the template file (relative to workspace root)
@@ -211,36 +254,10 @@ function readRefactorIssueTemplate (templatePath) {
   }
 
   try {
-    // Reject absolute paths immediately (V03: Path Traversal)
-    if (path.isAbsolute(templatePath)) {
-      console.log(`Template path ${templatePath} is absolute, using default content`)
-      return defaultContent
-    }
-
-    // Reject UNC paths (Windows network shares) (V03: Path Traversal)
-    if (templatePath.startsWith('\\\\')) {
-      console.log(`Template path ${templatePath} is a UNC path, using default content`)
-      return defaultContent
-    }
-
-    // Resolve the template path relative to the workspace
     const workspaceRoot = process.env.GITHUB_WORKSPACE || process.cwd()
-    const absolutePath = path.resolve(workspaceRoot, templatePath)
-
-    // Validate that the resolved path is within the workspace to prevent directory traversal
-    const relativePath = path.relative(workspaceRoot, absolutePath)
-
-    // Check if the relative path escapes the workspace (contains '..' or is absolute)
-    if (relativePath.startsWith('..') || path.isAbsolute(relativePath)) {
-      console.log(`Template path ${templatePath} is outside workspace, using default content`)
-      return defaultContent
-    }
-
-    // Validate file extension whitelist (V03: File Extension Validation)
-    const allowedExtensions = ['.md', '.txt']
-    const ext = path.extname(absolutePath).toLowerCase()
-    if (!allowedExtensions.includes(ext)) {
-      console.log(`Template file extension ${ext} not allowed, using default content`)
+    const absolutePath = validateTemplatePath(templatePath, workspaceRoot)
+    
+    if (!absolutePath) {
       return defaultContent
     }
 

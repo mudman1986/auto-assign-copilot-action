@@ -35,11 +35,10 @@ async function run () {
 
     // Parse and validate skip labels (V06: Label Array Validation)
     const skipLabelsRaw = core.getInput('skip-labels') || 'no-ai,refining'
-    const skipLabelsParsed = skipLabelsRaw
-      .split(',')
-      .map((label) => label.trim())
-      .filter((label) => label.length > 0)
-    const skipLabels = validateLabelArray(skipLabelsParsed, 50)
+    const skipLabels = validateLabelArray(
+      skipLabelsRaw.split(',').map(l => l.trim()).filter(l => l.length > 0),
+      50
+    )
 
     console.log(`Running auto-assign-copilot action (mode: ${mode}, force: ${force}, dryRun: ${dryRun})`)
 

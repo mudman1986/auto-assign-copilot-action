@@ -592,14 +592,13 @@ module.exports = async ({
       await enrichWithSubIssues(issues.repository.issues.nodes)
 
       // Find first assignable issue using simplified helper function
-      const assignable = helpers.findAssignableIssue(
+      issueToAssign = helpers.findAssignableIssue(
         issues.repository.issues.nodes,
         allowParentIssues,
         skipLabels,
         requiredLabel
       )
-      if (assignable) {
-        issueToAssign = assignable
+      if (issueToAssign) {
         console.log(
           `Found issue to assign: ${context.repo.owner}/${context.repo.repo}#${issueToAssign.number}`
         )
@@ -642,7 +641,8 @@ module.exports = async ({
       // Filter out priority-labeled issues (already checked)
       const nonPriorityIssues = allIssues.repository.issues.nodes.filter(
         (issue) => {
-          const hasPriorityLabel = issue.labels.nodes.some((l) =>
+          const labels = helpers.normalizeIssueLabels(issue)
+          const hasPriorityLabel = labels.some((l) =>
             labelPriority.includes(l.name)
           )
           return !hasPriorityLabel
