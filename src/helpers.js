@@ -254,8 +254,7 @@ function readRefactorIssueTemplate (templatePath) {
  * @returns {boolean} - True if issue was auto-created
  */
 function isAutoCreatedRefactorIssue (issue) {
-  const title = issue.title || ''
-  return title.includes('[AUTO]')
+  return issue?.title?.includes('[AUTO]') ?? false
 }
 
 /**
@@ -289,12 +288,12 @@ function shouldWaitForCooldown (closedIssues, cooldownDays = 7) {
 
   if (recentAutoCreatedRefactor) {
     const closedAt = new Date(recentAutoCreatedRefactor.closedAt)
-    const daysSinceClosed = (now - closedAt) / MS_PER_DAY
+    const daysSinceClosed = Math.floor((now - closedAt) / MS_PER_DAY)
     const daysRemaining = Math.ceil(cooldownDays - daysSinceClosed)
 
     return {
       shouldWait: true,
-      reason: `Auto-created refactor issue #${recentAutoCreatedRefactor.number} was closed ${Math.floor(daysSinceClosed)} days ago. Wait ${daysRemaining} more day(s) before creating a new one.`
+      reason: `Auto-created refactor issue #${recentAutoCreatedRefactor.number} was closed ${daysSinceClosed} days ago. Wait ${daysRemaining} more day(s) before creating a new one.`
     }
   }
 
