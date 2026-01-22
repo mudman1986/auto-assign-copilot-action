@@ -37,6 +37,7 @@
 <td width="33%" valign="top">
 
 ### Safety & Control
+- **Access control**: Require labeled approval before assignment (only users with write access can add labels)
 - **Dry run mode**: Preview agent decisions without executing
 - **Label-based filtering**: Skip issues marked for human attention
 - **Override capability**: Manual control when needed
@@ -96,7 +97,16 @@ jobs:
           wait-seconds: '300'  # 5 minutes grace period for issue events
 ```
 
-### 2. Set Up Authentication
+### 2. Create the Required Label
+
+Create a label named `copilot-approved` in your repository:
+1. Go to Issues → Labels
+2. Click "New label"
+3. Name: `copilot-approved`
+4. Description: "Issue approved for Copilot auto-assignment"
+5. Choose a color and create the label
+
+### 3. Set Up Authentication
 
 Create a Personal Access Token (PAT) from an account that has a GitHub Copilot license. The PAT requires the following permissions:
 - **Read access to metadata**
@@ -108,9 +118,9 @@ Create a Personal Access Token (PAT) from an account that has a GitHub Copilot l
 
 Add the PAT to your repository secrets as `COPILOT_ASSIGN_PAT`.
 
-### 3. Deploy
+### 4. Deploy
 
-The action will autonomously assign issues to Copilot based on intelligent priority routing.
+The action will autonomously assign issues to Copilot based on intelligent priority routing, but only for issues with the `copilot-approved` label.
 
 ---
 
@@ -123,6 +133,7 @@ The action will autonomously assign issues to Copilot based on intelligent prior
 | **`github-token`** | PAT from an account with GitHub Copilot license (requires read access to metadata, read/write access to actions, code, issues, and pull requests) | ✅ Yes | - |
 | `mode` | Assignment mode: `auto` or `refactor` | No | `auto` |
 | `label-override` | Specific label to filter (auto mode only) | No | `""` |
+| `required-label` | **Security feature**: Label that must be present on an issue before it is eligible for auto-assignment. Only users with write access can add labels, providing access control. Set to empty string to disable. | No | `copilot-approved` |
 | `force` | Force assignment even if Copilot has issues | No | `false` |
 | `dry-run` | Preview mode - no actual changes | No | `false` |
 | `allow-parent-issues` | Allow issues with sub-issues | No | `false` |
@@ -248,8 +259,20 @@ This design ensures that the refactor threshold takes priority over the cooldown
 ### Advanced Configurations
 
 ```yaml
+# Disable required label (not recommended for public repos)
+- uses: mudman1986/auto-assign-copilot-action@v2.0.0
+  with:
+    github-token: ${{ secrets.COPILOT_ASSIGN_PAT }}
+    required-label: ""  # Empty string disables the security feature
+
+# Use a custom required label
+- uses: mudman1986/auto-assign-copilot-action@v2.0.0
+  with:
+    github-token: ${{ secrets.COPILOT_ASSIGN_PAT }}
+    required-label: "ready-for-copilot"  # Custom label name
+
 # Custom skip labels and allow parent issues
-- uses: mudman1986/auto-assign-copilot-action@v1.3.2
+- uses: mudman1986/auto-assign-copilot-action@v2.0.0
   with:
     github-token: ${{ secrets.COPILOT_ASSIGN_PAT }}
     skip-labels: "no-ai,needs-review,on-hold"
@@ -373,6 +396,40 @@ Review the codebase and identify opportunities for improvement.
 ---
 
 ## Security
+
+### Access Control for Public Repositories
+
+**Issue Assignment Security**: The `required-label` feature controls which issues can be auto-assigned to Copilot.
+
+**How it works:**
+- Only users with **write access** (triage role or higher) can add/remove labels on issues
+- Public repository users cannot add labels to issues
+- By requiring a specific label, you ensure only maintainers can approve issues for Copilot
+
+**Default behavior (v2.0.0+)**: The action requires the `copilot-approved` label by default. Only issues with this label will be eligible for auto-assignment.
+
+**To disable the security feature** (not recommended for public repos):
+```yaml
+- uses: mudman1986/auto-assign-copilot-action@v2.0.0
+  with:
+    github-token: ${{ secrets.COPILOT_ASSIGN_PAT }}
+    required-label: ""  # Empty string disables the requirement
+```
+
+**To use a custom label:**
+```yaml
+- uses: mudman1986/auto-assign-copilot-action@v2.0.0
+  with:
+    github-token: ${{ secrets.COPILOT_ASSIGN_PAT }}
+    required-label: "ready-for-copilot"  # Custom label name
+```
+
+**Workflow:**
+1. Anyone can create an issue in your repository
+2. A maintainer reviews the issue
+3. If appropriate, the maintainer adds the `copilot-approved` label (or your custom label)
+4. The action will only consider issues with this label for assignment
+5. Without the label, issues are ignored by the auto-assignment process
 
 ### Path Validation
 

@@ -18,6 +18,7 @@ async function run () {
     const token = core.getInput('github-token', { required: true })
     const mode = core.getInput('mode') || 'auto'
     const labelOverride = core.getInput('label-override') || null
+    const requiredLabel = core.getInput('required-label') || null
     const force = core.getInput('force') === 'true'
     const dryRun = core.getInput('dry-run') === 'true'
     const allowParentIssues = core.getInput('allow-parent-issues') === 'true'
@@ -45,6 +46,7 @@ async function run () {
       context: github.context,
       mode,
       labelOverride,
+      requiredLabel,
       force,
       dryRun,
       allowParentIssues,
