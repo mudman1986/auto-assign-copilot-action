@@ -34,6 +34,12 @@ module.exports = async ({
 }) => {
   const helpers = require('./helpers.js')
 
+  // Common GraphQL query variables
+  const repoVars = {
+    owner: context.repo.owner,
+    repo: context.repo.repo
+  }
+
   // Wait for grace period if this is an issue event and wait-seconds is configured
   if (context.eventName === 'issues' && waitSeconds > 0) {
     console.log(
@@ -109,8 +115,7 @@ module.exports = async ({
         }
       `,
       {
-        owner: context.repo.owner,
-        repo: context.repo.repo,
+        ...repoVars,
         fetchCount
       }
     )
@@ -150,10 +155,7 @@ module.exports = async ({
         }
       }
     `,
-    {
-      owner: context.repo.owner,
-      repo: context.repo.repo
-    }
+    repoVars
   )
 
   const repoId = repoInfo.repository.id
@@ -195,10 +197,7 @@ module.exports = async ({
         }
       }
     `,
-    {
-      owner: context.repo.owner,
-      repo: context.repo.repo
-    }
+    repoVars
   )
 
   const allIssues = allIssuesResponse.repository.issues.nodes
@@ -266,10 +265,7 @@ module.exports = async ({
           }
         }
       `,
-      {
-        owner: context.repo.owner,
-        repo: context.repo.repo
-      }
+      repoVars
     )
 
     const refactorIssues = refactorIssuesResponse.repository.issues.nodes
@@ -365,10 +361,7 @@ module.exports = async ({
           }
         }
       `,
-      {
-        owner: context.repo.owner,
-        repo: context.repo.repo
-      }
+      repoVars
     )
 
     if (!labelInfo.repository.label) {
@@ -520,8 +513,7 @@ module.exports = async ({
           }
         `,
         {
-          owner: context.repo.owner,
-          repo: context.repo.repo,
+          ...repoVars,
           label
         }
       )
@@ -578,10 +570,7 @@ module.exports = async ({
             }
           }
         `,
-        {
-          owner: context.repo.owner,
-          repo: context.repo.repo
-        }
+        repoVars
       )
 
       // Filter out priority-labeled issues (already checked)
