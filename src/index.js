@@ -40,7 +40,7 @@ async function run () {
       50
     )
 
-    console.log(`Running auto-assign-copilot action (mode: ${mode}, force: ${force}, dryRun: ${dryRun})`)
+    core.info(`Running auto-assign-copilot action (mode: ${mode}, force: ${force}, dryRun: ${dryRun})`)
 
     // Create authenticated Octokit client
     const octokit = github.getOctokit(token)
@@ -68,10 +68,10 @@ async function run () {
     core.setOutput('assigned-issue-url', result?.issue?.url || '')
     core.setOutput('assignment-mode', mode)
 
-    console.log('✓ Action completed successfully')
+    core.info('✓ Action completed successfully')
   } catch (error) {
     core.setFailed(`Action failed: ${error.message}`)
-    console.error(error)
+    core.error(error.stack || error.message)
   }
 }
 

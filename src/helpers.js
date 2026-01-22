@@ -7,6 +7,7 @@
  * based on priority labels and various constraints.
  */
 
+const core = require('@actions/core')
 const fs = require('fs')
 const path = require('path')
 
@@ -181,13 +182,13 @@ function hasRecentRefactorIssue (closedIssues, count = 4) {
 function validateTemplatePath (templatePath, workspaceRoot) {
   // Reject absolute paths immediately (V03: Path Traversal)
   if (path.isAbsolute(templatePath)) {
-    console.log(`Template path ${templatePath} is absolute, using default content`)
+    core.info(`Template path ${templatePath} is absolute, using default content`)
     return null
   }
 
   // Reject UNC paths (Windows network shares) (V03: Path Traversal)
   if (templatePath.startsWith('\\\\')) {
-    console.log(`Template path ${templatePath} is a UNC path, using default content`)
+    core.info(`Template path ${templatePath} is a UNC path, using default content`)
     return null
   }
 
@@ -199,7 +200,7 @@ function validateTemplatePath (templatePath, workspaceRoot) {
 
   // Check if the relative path escapes the workspace (contains '..' or is absolute)
   if (relativePath.startsWith('..') || path.isAbsolute(relativePath)) {
-    console.log(`Template path ${templatePath} is outside workspace, using default content`)
+    core.info(`Template path ${templatePath} is outside workspace, using default content`)
     return null
   }
 
@@ -207,7 +208,7 @@ function validateTemplatePath (templatePath, workspaceRoot) {
   const allowedExtensions = ['.md', '.txt']
   const ext = path.extname(absolutePath).toLowerCase()
   if (!allowedExtensions.includes(ext)) {
-    console.log(`Template file extension ${ext} not allowed, using default content`)
+    core.info(`Template file extension ${ext} not allowed, using default content`)
     return null
   }
 
@@ -249,21 +250,21 @@ function readRefactorIssueTemplate (templatePath) {
 
   // If no template path provided, use default content
   if (!templatePath?.trim()) {
-    console.log('No custom template path provided, using default content')
+    core.info('No custom template path provided, using default content')
     return defaultContent
   }
 
   try {
     const workspaceRoot = process.env.GITHUB_WORKSPACE || process.cwd()
     const absolutePath = validateTemplatePath(templatePath, workspaceRoot)
-    
+
     if (!absolutePath) {
       return defaultContent
     }
 
     // Check if file exists
     if (!fs.existsSync(absolutePath)) {
-      console.log(`Template file not found at ${absolutePath}, using default content`)
+      core.info(`Template file not found at ${absolutePath}, using default content`)
       return defaultContent
     }
 
@@ -271,16 +272,16 @@ function readRefactorIssueTemplate (templatePath) {
     const stats = fs.statSync(absolutePath)
     const MAX_SIZE = 100 * 1024 // 100KB
     if (stats.size > MAX_SIZE) {
-      console.log(`Template file too large (${stats.size} bytes), using default content`)
+      core.info(`Template file too large (${stats.size} bytes), using default content`)
       return defaultContent
     }
 
     // Read and return the template content
     const content = fs.readFileSync(absolutePath, 'utf8')
-    console.log(`Successfully loaded template from ${absolutePath}`)
+    core.info(`Successfully loaded template from ${absolutePath}`)
     return content
   } catch (error) {
-    console.log(`Error reading template file: ${error.message}, using default content`)
+    core.info(`Error reading template file: ${error.message}, using default content`)
     return defaultContent
   }
 }
