@@ -520,8 +520,8 @@ module.exports = async ({
 
       core.info('Added \'refactor\' label to issue')
     } catch (error) {
-      console.error(`Failed to add refactor label: ${error.message}`)
-      console.error(
+      core.error(`Failed to add refactor label: ${error.message}`)
+      core.error(
         'Issue was created successfully but label could not be added.'
       )
       // Don't throw - issue was created successfully
