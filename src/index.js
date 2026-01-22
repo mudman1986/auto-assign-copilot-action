@@ -22,12 +22,10 @@ async function run () {
     const dryRun = core.getInput('dry-run') === 'true'
     const allowParentIssues = core.getInput('allow-parent-issues') === 'true'
     const skipLabelsRaw = core.getInput('skip-labels') || 'no-ai,refining'
-    const refactorThresholdRaw = core.getInput('refactor-threshold') || '4'
-    const refactorThreshold = parseInt(refactorThresholdRaw, 10)
-    const createRefactorIssue = core.getInput('create-refactor-issue') === 'true'
+    const refactorThreshold = parseInt(core.getInput('refactor-threshold') || '4', 10)
+    const createRefactorIssue = core.getInput('create-refactor-issue') !== 'false'
     const refactorIssueTemplate = core.getInput('refactor-issue-template') || '.github/REFACTOR_ISSUE_TEMPLATE.md'
-    const waitSecondsRaw = core.getInput('wait-seconds') || '0'
-    const waitSeconds = parseInt(waitSecondsRaw, 10)
+    const waitSeconds = parseInt(core.getInput('wait-seconds') || '0', 10)
 
     // Parse skip labels from comma-separated string
     const skipLabels = skipLabelsRaw
@@ -60,10 +58,8 @@ async function run () {
     })
 
     // Set outputs
-    const assignedIssueNumber = result?.issue?.number?.toString() || ''
-    const assignedIssueUrl = result?.issue?.url || ''
-    core.setOutput('assigned-issue-number', assignedIssueNumber)
-    core.setOutput('assigned-issue-url', assignedIssueUrl)
+    core.setOutput('assigned-issue-number', result?.issue?.number?.toString() || '')
+    core.setOutput('assigned-issue-url', result?.issue?.url || '')
     core.setOutput('assignment-mode', mode)
 
     console.log('✓ Action completed successfully')

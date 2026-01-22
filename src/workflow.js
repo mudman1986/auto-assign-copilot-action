@@ -16,7 +16,7 @@
  * @param {number} params.refactorThreshold - Number of closed issues to check
  * @param {boolean} params.createRefactorIssue - Whether to create new refactor issues
  * @param {string} params.refactorIssueTemplate - Path to the refactor issue template file
- * @param {number} params.waitSeconds - Number of seconds to wait for issue events
+ * @param {number} params.waitSeconds - Number of seconds to wait for issue events (default: 0)
  */
 module.exports = async ({
   github,
@@ -30,7 +30,7 @@ module.exports = async ({
   refactorThreshold,
   createRefactorIssue,
   refactorIssueTemplate,
-  waitSeconds
+  waitSeconds = 0
 }) => {
   const helpers = require('./helpers.js')
 
@@ -64,7 +64,6 @@ module.exports = async ({
       )
       return subIssuesResponse.data.length
     } catch (error) {
-      // Silently handle errors - most issues won't have sub-issues endpoint
       return 0
     }
   }
@@ -73,10 +72,8 @@ module.exports = async ({
    * Enriches issues with sub-issue counts from REST API
    * Modifies the issues array in-place by setting issue.trackedIssues.totalCount
    * @param {Array} issues - Array of issue objects
-   * @returns {Promise<void>}
    */
   async function enrichWithSubIssues (issues) {
-    // Use Promise.all for parallel API calls instead of sequential
     await Promise.all(
       issues.map(async (issue) => {
         const totalSubIssues = await getSubIssuesCount(issue.number)
@@ -204,15 +201,11 @@ module.exports = async ({
     }
   )
 
-  // Filter issues to find those assigned to copilot
   const allIssues = allIssuesResponse.repository.issues.nodes
   console.log(`Found ${allIssues.length} total open issues`)
 
   const currentIssues = allIssues.filter((issue) =>
-    issue.assignees.nodes.some(
-      (assignee) =>
-        assignee.login === copilotLogin || assignee.id === copilotBotId
-    )
+    issue.assignees.nodes.some((assignee) => assignee.login === copilotLogin)
   )
 
   if (currentIssues.length > 0) {
@@ -266,13 +259,6 @@ module.exports = async ({
                   nodes { name }
                 }
                 trackedIssues(first: 1) {
-                  totalCount
-                }
-                trackedInIssues(first: 10) {
-                  nodes {
-                    number
-                    title
-                  }
                   totalCount
                 }
               }
@@ -528,13 +514,6 @@ module.exports = async ({
                   trackedIssues(first: 1) {
                     totalCount
                   }
-                  trackedInIssues(first: 10) {
-                    nodes {
-                      number
-                      title
-                    }
-                    totalCount
-                  }
                 }
               }
             }
@@ -592,13 +571,6 @@ module.exports = async ({
                     nodes { name }
                   }
                   trackedIssues(first: 1) {
-                    totalCount
-                  }
-                  trackedInIssues(first: 10) {
-                    nodes {
-                      number
-                      title
-                    }
                     totalCount
                   }
                 }

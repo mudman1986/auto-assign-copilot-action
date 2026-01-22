@@ -26,17 +26,13 @@ function shouldSkipIssue (issue, allowParentIssues = false, skipLabels = []) {
   if (issue.hasSubIssues && !allowParentIssues) {
     return { shouldSkip: true, reason: 'has sub-issues' }
   }
-  // Check if issue has any of the skip labels
   if (skipLabels.length > 0 && issue.labels) {
     const issueLabels = issue.labels.map((l) => l.name)
     const matchedLabel = skipLabels.find((skipLabel) =>
       issueLabels.includes(skipLabel)
     )
     if (matchedLabel) {
-      return {
-        shouldSkip: true,
-        reason: `has skip label: ${matchedLabel}`
-      }
+      return { shouldSkip: true, reason: `has skip label: ${matchedLabel}` }
     }
   }
   return { shouldSkip: false, reason: null }
@@ -111,7 +107,6 @@ function parseIssueData (issue) {
     url: issue.url,
     body: issue.body || '',
     isAssigned: issue.assignees.nodes.length > 0,
-    // Check for ANY sub-issues (open or closed) - parent issues should not be assigned
     hasSubIssues: issue.trackedIssues?.totalCount > 0,
     isSubIssue: issue.trackedInIssues?.totalCount > 0,
     isRefactorIssue: issue.labels.nodes.some((l) => l.name === 'refactor'),
@@ -157,8 +152,7 @@ function hasRecentRefactorIssue (closedIssues, count = 4) {
     return false
   }
 
-  const recentIssues = closedIssues.slice(0, count)
-  return recentIssues.some((issue) => {
+  return closedIssues.slice(0, count).some((issue) => {
     const labels = normalizeIssueLabels(issue)
     return labels.some((label) => label.name === 'refactor')
   })
@@ -166,7 +160,7 @@ function hasRecentRefactorIssue (closedIssues, count = 4) {
 
 /**
  * Find an available refactor issue (open, unassigned, with refactor label)
- * @param {Array} issues - Array of issue objects from GraphQL
+ * @param {Array} issues - Array of issue objects from GraphQL (already filtered for refactor label)
  * @param {boolean} allowParentIssues - Whether to allow assigning issues with sub-issues
  * @param {Array<string>} skipLabels - Array of label names to skip
  * @returns {Object|null} - First available refactor issue or null
@@ -176,14 +170,7 @@ function findAvailableRefactorIssue (
   allowParentIssues = false,
   skipLabels = []
 ) {
-  // Filter to only refactor-labeled issues
-  const refactorIssues = issues.filter((issue) => {
-    const labels = normalizeIssueLabels(issue)
-    return labels.some((label) => label.name === 'refactor')
-  })
-
-  // Find first assignable refactor issue
-  return findAssignableIssue(refactorIssues, allowParentIssues, skipLabels)
+  return findAssignableIssue(issues, allowParentIssues, skipLabels)
 }
 
 /**
