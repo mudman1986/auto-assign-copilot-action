@@ -78,3 +78,4 @@ jobs:
           skip-labels: ${{ inputs.skip_labels || 'no-ai,refining' }}
           refactor-threshold: ${{ inputs.refactor_threshold || '4' }}
           wait-seconds: '300' # 5 minutes grace period for issue events
+          refactor-issue-template: .github/REFACTOR_ISSUE_TEMPLATE.md

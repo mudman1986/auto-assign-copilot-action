@@ -10,6 +10,8 @@ Review the codebase and identify opportunities for improvement.
 - Code duplication
 - Error handling
 - Dependencies and updates
+- Folder structure
+- Use of custom code instead of established libraries
 
 ## Guidelines:
 
