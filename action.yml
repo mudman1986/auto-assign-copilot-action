@@ -18,6 +18,10 @@ inputs:
     description: "Priority label to filter by (auto mode only). Leave empty for default priority order: bug, documentation, refactor, enhancement"
     required: false
     default: ""
+  required-label:
+    description: "Label that must be present on an issue before it is eligible for auto-assignment. Only users with write access can add labels, providing access control. Leave empty to disable this security feature."
+    required: false
+    default: ""
   force:
     description: "Force assignment even if Copilot already has an issue assigned"
     required: false

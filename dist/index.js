@@ -35566,12 +35566,14 @@ function parseIssueData (issue) {
  * @param {Array} issues - Array of issue objects from GraphQL
  * @param {boolean} allowParentIssues - Whether to allow assigning issues with sub-issues (open or closed)
  * @param {Array<string>} [skipLabels=[]] - Array of label names to skip (default: empty array)
+ * @param {string|null} [requiredLabel=null] - Label that must be present for assignment (default: null)
  * @returns {Object|null} - First assignable issue or null
  */
 function findAssignableIssue (
   issues,
   allowParentIssues = false,
-  skipLabels = []
+  skipLabels = [],
+  requiredLabel = null
 ) {
   for (const issue of issues) {
     const parsed = parseIssueData(issue)
@@ -35581,9 +35583,16 @@ function findAssignableIssue (
       skipLabels
     )
 
-    if (!shouldSkip) {
-      return parsed
+    if (shouldSkip) {
+      continue
     }
+
+    // Check if the issue has the required label (if specified)
+    if (!hasRequiredLabel(parsed, requiredLabel)) {
+      continue
+    }
+
+    return parsed
   }
   return null
 }
@@ -35729,6 +35738,25 @@ function shouldWaitForCooldown (closedIssues, cooldownDays = 7) {
   }
 }
 
+/**
+ * Check if an issue has the required label for assignment
+ * @param {Object} issue - Issue object with labels
+ * @param {string|null} requiredLabel - Label that must be present (null or empty string means no requirement)
+ * @returns {boolean} - True if issue has the required label or no label is required
+ */
+function hasRequiredLabel (issue, requiredLabel) {
+  // If no required label is specified, all issues are eligible
+  if (!requiredLabel || requiredLabel.trim() === '') {
+    return true
+  }
+
+  // Normalize labels to handle both GraphQL and flattened structures
+  const labels = normalizeIssueLabels(issue)
+
+  // Check if the issue has the required label
+  return labels.some((label) => label.name === requiredLabel)
+}
+
 module.exports = {
   shouldSkipIssue,
   shouldAssignNewIssue,
@@ -35738,7 +35766,8 @@ module.exports = {
   hasRecentRefactorIssue,
   readRefactorIssueTemplate,
   isAutoCreatedRefactorIssue,
-  shouldWaitForCooldown
+  shouldWaitForCooldown,
+  hasRequiredLabel
 }
 
 
@@ -35757,6 +35786,7 @@ module.exports = {
  * @param {Object} params.context - GitHub Actions context
  * @param {string} params.mode - Assignment mode ('auto' or 'refactor')
  * @param {string|null} params.labelOverride - Optional label to filter by
+ * @param {string|null} params.requiredLabel - Label that must be present for assignment eligibility
  * @param {boolean} params.force - Force assignment even if copilot has issues
  * @param {boolean} params.dryRun - Dry run mode
  * @param {boolean} params.allowParentIssues - Allow assigning parent issues
@@ -35772,6 +35802,7 @@ module.exports = async ({
   context,
   mode,
   labelOverride,
+  requiredLabel,
   force,
   dryRun,
   allowParentIssues,
@@ -36068,7 +36099,8 @@ module.exports = async ({
     const availableRefactorIssue = helpers.findAssignableIssue(
       refactorIssues,
       allowParentIssues,
-      skipLabels
+      skipLabels,
+      requiredLabel
     )
 
     if (availableRefactorIssue) {
@@ -36340,7 +36372,8 @@ module.exports = async ({
       const assignable = helpers.findAssignableIssue(
         issues.repository.issues.nodes,
         allowParentIssues,
-        skipLabels
+        skipLabels,
+        requiredLabel
       )
       if (assignable) {
         issueToAssign = assignable
@@ -36399,7 +36432,8 @@ module.exports = async ({
       issueToAssign = helpers.findAssignableIssue(
         nonPriorityIssues,
         allowParentIssues,
-        skipLabels
+        skipLabels,
+        requiredLabel
       )
       if (issueToAssign) {
         console.log(
@@ -36784,6 +36818,7 @@ async function run () {
     const token = core.getInput('github-token', { required: true })
     const mode = core.getInput('mode') || 'auto'
     const labelOverride = core.getInput('label-override') || null
+    const requiredLabel = core.getInput('required-label') || null
     const force = core.getInput('force') === 'true'
     const dryRun = core.getInput('dry-run') === 'true'
     const allowParentIssues = core.getInput('allow-parent-issues') === 'true'
@@ -36811,6 +36846,7 @@ async function run () {
       context: github.context,
       mode,
       labelOverride,
+      requiredLabel,
       force,
       dryRun,
       allowParentIssues,

@@ -1387,4 +1387,213 @@ describe('Workflow executeWorkflow', () => {
       expect(createIssueCalls.length).toBeGreaterThan(0)
     })
   })
+
+  describe('required label security feature', () => {
+    test('should skip issues without required label when requiredLabel is set', async () => {
+      const mockGithub = createMockGithub({
+        graphql: async (query, variables) => {
+          if (query.includes('suggestedActors')) {
+            return {
+              repository: {
+                id: 'repo-id-123',
+                suggestedActors: {
+                  nodes: [
+                    {
+                      login: 'copilot-swe-agent',
+                      __typename: 'Bot',
+                      id: 'copilot-bot-id-123'
+                    }
+                  ]
+                }
+              }
+            }
+          }
+          if (query.includes('issues(first: 100, states: OPEN)')) {
+            return {
+              repository: {
+                issues: {
+                  nodes: []
+                }
+              }
+            }
+          }
+          if (query.includes('states: OPEN, labels:')) {
+            return {
+              repository: {
+                issues: {
+                  nodes: [
+                    {
+                      id: 'issue-id-1',
+                      number: 42,
+                      title: 'Test Issue Without Required Label',
+                      body: 'Test body',
+                      url: 'https://github.com/test/repo/issues/42',
+                      assignees: { nodes: [] },
+                      labels: {
+                        nodes: [{ name: 'bug' }]
+                      },
+                      trackedIssues: { totalCount: 0 },
+                      trackedInIssues: { totalCount: 0 }
+                    },
+                    {
+                      id: 'issue-id-2',
+                      number: 43,
+                      title: 'Test Issue With Required Label',
+                      body: 'Test body',
+                      url: 'https://github.com/test/repo/issues/43',
+                      assignees: { nodes: [] },
+                      labels: {
+                        nodes: [{ name: 'bug' }, { name: 'copilot-ready' }]
+                      },
+                      trackedIssues: { totalCount: 0 },
+                      trackedInIssues: { totalCount: 0 }
+                    }
+                  ]
+                }
+              }
+            }
+          }
+          return {}
+        }
+      })
+      const mockContext = createMockContext()
+
+      const result = await executeWorkflow({
+        github: mockGithub,
+        context: mockContext,
+        mode: 'auto',
+        labelOverride: null,
+        requiredLabel: 'copilot-ready',
+        force: false,
+        dryRun: true,
+        allowParentIssues: false,
+        skipLabels: ['no-ai'],
+        refactorThreshold: 4,
+        createRefactorIssue: true,
+        refactorIssueTemplate: '.github/REFACTOR_ISSUE_TEMPLATE.md'
+      })
+
+      // Should assign issue #43 which has the required label
+      expect(result).not.toBeNull()
+      expect(result.issue).toBeDefined()
+      expect(result.issue.number).toBe(43)
+      expect(result.issue.title).toBe('Test Issue With Required Label')
+    })
+
+    test('should assign issues when requiredLabel is not set', async () => {
+      const mockGithub = createMockGithub()
+      const mockContext = createMockContext()
+
+      const result = await executeWorkflow({
+        github: mockGithub,
+        context: mockContext,
+        mode: 'auto',
+        labelOverride: null,
+        requiredLabel: null,
+        force: false,
+        dryRun: true,
+        allowParentIssues: false,
+        skipLabels: ['no-ai'],
+        refactorThreshold: 4,
+        createRefactorIssue: true,
+        refactorIssueTemplate: '.github/REFACTOR_ISSUE_TEMPLATE.md'
+      })
+
+      // Should assign first available issue (backward compatible behavior)
+      expect(result).not.toBeNull()
+      expect(result.issue).toBeDefined()
+      expect(result.issue.number).toBe(42)
+    })
+
+    test('should apply required label to refactor issues', async () => {
+      const mockGithub = createMockGithub({
+        graphql: async (query, variables) => {
+          if (query.includes('suggestedActors')) {
+            return {
+              repository: {
+                id: 'repo-id-123',
+                suggestedActors: {
+                  nodes: [
+                    {
+                      login: 'copilot-swe-agent',
+                      __typename: 'Bot',
+                      id: 'copilot-bot-id-123'
+                    }
+                  ]
+                }
+              }
+            }
+          }
+          if (query.includes('issues(first: 100, states: OPEN)')) {
+            return {
+              repository: {
+                issues: {
+                  nodes: []
+                }
+              }
+            }
+          }
+          if (query.includes('states: OPEN, labels: ["refactor"]')) {
+            return {
+              repository: {
+                issues: {
+                  nodes: [
+                    {
+                      id: 'refactor-issue-id-1',
+                      number: 100,
+                      title: 'Refactor Without Required Label',
+                      body: 'Refactor body',
+                      url: 'https://github.com/test/repo/issues/100',
+                      assignees: { nodes: [] },
+                      labels: {
+                        nodes: [{ name: 'refactor' }]
+                      },
+                      trackedIssues: { totalCount: 0 },
+                      trackedInIssues: { totalCount: 0 }
+                    },
+                    {
+                      id: 'refactor-issue-id-2',
+                      number: 101,
+                      title: 'Refactor With Required Label',
+                      body: 'Refactor body',
+                      url: 'https://github.com/test/repo/issues/101',
+                      assignees: { nodes: [] },
+                      labels: {
+                        nodes: [{ name: 'refactor' }, { name: 'copilot-ready' }]
+                      },
+                      trackedIssues: { totalCount: 0 },
+                      trackedInIssues: { totalCount: 0 }
+                    }
+                  ]
+                }
+              }
+            }
+          }
+          return {}
+        }
+      })
+      const mockContext = createMockContext()
+
+      const result = await executeWorkflow({
+        github: mockGithub,
+        context: mockContext,
+        mode: 'refactor',
+        labelOverride: null,
+        requiredLabel: 'copilot-ready',
+        force: false,
+        dryRun: true,
+        allowParentIssues: false,
+        skipLabels: ['no-ai'],
+        refactorThreshold: 4,
+        createRefactorIssue: true,
+        refactorIssueTemplate: '.github/REFACTOR_ISSUE_TEMPLATE.md'
+      })
+
+      // Should assign refactor issue #101 which has the required label
+      expect(result).not.toBeNull()
+      expect(result.issue).toBeDefined()
+      expect(result.issue.number).toBe(101)
+      expect(result.issue.title).toBe('Refactor With Required Label')
+    })
+  })
 })

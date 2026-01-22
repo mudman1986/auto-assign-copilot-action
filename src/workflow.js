@@ -9,6 +9,7 @@
  * @param {Object} params.context - GitHub Actions context
  * @param {string} params.mode - Assignment mode ('auto' or 'refactor')
  * @param {string|null} params.labelOverride - Optional label to filter by
+ * @param {string|null} params.requiredLabel - Label that must be present for assignment eligibility
  * @param {boolean} params.force - Force assignment even if copilot has issues
  * @param {boolean} params.dryRun - Dry run mode
  * @param {boolean} params.allowParentIssues - Allow assigning parent issues
@@ -24,6 +25,7 @@ module.exports = async ({
   context,
   mode,
   labelOverride,
+  requiredLabel,
   force,
   dryRun,
   allowParentIssues,
@@ -320,7 +322,8 @@ module.exports = async ({
     const availableRefactorIssue = helpers.findAssignableIssue(
       refactorIssues,
       allowParentIssues,
-      skipLabels
+      skipLabels,
+      requiredLabel
     )
 
     if (availableRefactorIssue) {
@@ -592,7 +595,8 @@ module.exports = async ({
       const assignable = helpers.findAssignableIssue(
         issues.repository.issues.nodes,
         allowParentIssues,
-        skipLabels
+        skipLabels,
+        requiredLabel
       )
       if (assignable) {
         issueToAssign = assignable
@@ -651,7 +655,8 @@ module.exports = async ({
       issueToAssign = helpers.findAssignableIssue(
         nonPriorityIssues,
         allowParentIssues,
-        skipLabels
+        skipLabels,
+        requiredLabel
       )
       if (issueToAssign) {
         console.log(
