@@ -205,6 +205,13 @@ jobs:
             force: false
             test-name: 'Refactor mode with default template content'
 
+          # Test refactor mode with force flag
+          - mode: 'refactor'
+            dry-run: true
+            label-override: ''
+            force: true
+            test-name: 'Refactor mode with force flag'
+
     steps:
       - name: Checkout code
         uses: actions/checkout@v6

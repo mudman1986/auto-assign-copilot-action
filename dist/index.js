@@ -35504,6 +35504,14 @@ function shouldAssignNewIssue (assignedIssues, mode, force) {
     return { shouldAssign: true, reason: 'Copilot has no assigned issues' }
   }
 
+  // Force flag overrides all other checks in both modes
+  if (force) {
+    return {
+      shouldAssign: true,
+      reason: 'Force flag is set'
+    }
+  }
+
   if (mode === 'refactor') {
     // Check if already working on a refactor issue
     const hasRefactorIssue = assignedIssues.some((issue) => {
@@ -35524,13 +35532,6 @@ function shouldAssignNewIssue (assignedIssues, mode, force) {
   }
 
   // Auto mode
-  if (force) {
-    return {
-      shouldAssign: true,
-      reason: 'Force flag is set'
-    }
-  }
-
   return {
     shouldAssign: false,
     reason: 'Copilot already has assigned issues and force=false'
