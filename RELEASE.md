@@ -110,9 +110,30 @@ The changelog is automatically generated in `CHANGELOG.md` and includes:
 - Reverts
 
 Each entry includes:
-- Commit message
+- Commit subject (title)
+- Commit body (if present) - includes individual commits when using squash merge
 - Link to the commit
 - PR reference (if applicable)
+
+### Squash Merge and Release Notes
+
+When using squash merge (the default for this repository), GitHub includes the list of individual commits in the commit body. The release notes will automatically include this information, showing all the individual commits that were part of the PR.
+
+**Example:** If you squash merge a PR with these commits:
+- `feat: add new feature`
+- `test: add tests for new feature`
+- `docs: update documentation`
+
+The release notes will show:
+```
+* feat: add new feature
+
+  - feat: add new feature
+  - test: add tests for new feature
+  - docs: update documentation
+```
+
+This provides full visibility into all changes included in the release.
 
 ## GitHub Marketplace Publishing
 
