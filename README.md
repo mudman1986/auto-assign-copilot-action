@@ -190,7 +190,8 @@ After closing an issue, the system analyzes the last **N** closed issues (N = `r
 
 To prevent creating too many auto-generated refactor issues in rapid succession:
 - Auto-created refactor issues are marked with `[AUTO]` in the title
-- After an auto-created refactor issue is closed, the system waits for a configurable cooldown period (default: 7 days) before creating another one
+- The system checks if any auto-created refactor issue was closed within the cooldown period (default: 7 days)
+- If an auto-created refactor issue was closed within the cooldown period, the system waits before creating another one
 - Manually created refactor issues (without `[AUTO]` marker) are not subject to this cooldown
 - This prevents loops where closing a refactor issue immediately creates a new one
 - The cooldown only applies to auto-created issues; manually assigned refactor issues can still be assigned at any time

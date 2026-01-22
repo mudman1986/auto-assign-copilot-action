@@ -35453,6 +35453,9 @@ function wrappy (fn, cb) {
 const fs = __nccwpck_require__(9896)
 const path = __nccwpck_require__(6928)
 
+// Constants
+const MS_PER_DAY = 1000 * 60 * 60 * 24
+
 /**
  * Check if an issue should be skipped for assignment
  * @param {Object} issue - Issue object from parseIssueData
@@ -35699,8 +35702,8 @@ function isAutoCreatedRefactorIssue (issue) {
 }
 
 /**
- * Check if cooldown period has passed since the last auto-created refactor issue was closed
- * @param {Array} closedIssues - Array of recently closed issues (sorted by closedAt desc)
+ * Check if an auto-created refactor issue was closed within the cooldown period
+ * @param {Array} closedIssues - Array of recently closed issues
  * @param {number} cooldownDays - Number of days to wait
  * @returns {Object} - {shouldWait: boolean, reason: string}
  */
@@ -35709,33 +35712,38 @@ function shouldWaitForCooldown (closedIssues, cooldownDays = 7) {
     return { shouldWait: false, reason: 'No closed issues found' }
   }
 
-  // Find the most recent auto-created refactor issue
-  const lastAutoCreatedRefactor = closedIssues.find((issue) => {
+  const now = new Date()
+  const cooldownMs = cooldownDays * MS_PER_DAY
+
+  // Find any auto-created refactor issue closed within the cooldown period
+  const recentAutoCreatedRefactor = closedIssues.find((issue) => {
     const labels = normalizeIssueLabels(issue)
     const hasRefactorLabel = labels.some((label) => label.name === 'refactor')
-    return hasRefactorLabel && isAutoCreatedRefactorIssue(issue)
+
+    if (!hasRefactorLabel || !isAutoCreatedRefactorIssue(issue)) {
+      return false
+    }
+
+    // Check if it was closed within the cooldown period
+    const closedAt = new Date(issue.closedAt)
+    const timeSinceClosed = now - closedAt
+    return timeSinceClosed < cooldownMs
   })
 
-  if (!lastAutoCreatedRefactor) {
-    return { shouldWait: false, reason: 'No auto-created refactor issue found in recent closed issues' }
-  }
-
-  // Check if cooldown period has passed
-  const closedAt = new Date(lastAutoCreatedRefactor.closedAt)
-  const now = new Date()
-  const daysSinceClosed = (now - closedAt) / (1000 * 60 * 60 * 24)
-
-  if (daysSinceClosed < cooldownDays) {
+  if (recentAutoCreatedRefactor) {
+    const closedAt = new Date(recentAutoCreatedRefactor.closedAt)
+    const daysSinceClosed = (now - closedAt) / MS_PER_DAY
     const daysRemaining = Math.ceil(cooldownDays - daysSinceClosed)
+
     return {
       shouldWait: true,
-      reason: `Last auto-created refactor issue #${lastAutoCreatedRefactor.number} was closed ${Math.floor(daysSinceClosed)} days ago. Wait ${daysRemaining} more day(s) before creating a new one.`
+      reason: `Auto-created refactor issue #${recentAutoCreatedRefactor.number} was closed ${Math.floor(daysSinceClosed)} days ago. Wait ${daysRemaining} more day(s) before creating a new one.`
     }
   }
 
   return {
     shouldWait: false,
-    reason: `Last auto-created refactor issue was closed ${Math.floor(daysSinceClosed)} days ago, cooldown period (${cooldownDays} days) has passed`
+    reason: 'No auto-created refactor issue found closed within the cooldown period'
   }
 }
 
