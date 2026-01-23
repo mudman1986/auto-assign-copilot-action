@@ -38,7 +38,8 @@ function expandCommits (commits) {
           type: sub.type,
           scope: sub.scope,
           subject: sub.subject,
-          // Note: body is intentionally not included to avoid confusion
+          // Body is intentionally excluded as it contains the original squash merge
+          // commit list which would be confusing for individual expanded commits
           // Mark as processed to avoid re-processing
           _processedSquash: true
         })
