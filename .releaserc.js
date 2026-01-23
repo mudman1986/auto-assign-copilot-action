@@ -33,6 +33,9 @@ module.exports = {
             { type: 'docs', section: 'Documentation' },
             { type: 'refactor', section: 'Code Refactoring' }
           ]
+        },
+        writerOpts: {
+          commitPartial: '* {{#if scope}}**{{scope}}:** {{/if}}{{subject}}'
         }
       }
     ],

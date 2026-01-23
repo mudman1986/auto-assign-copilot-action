@@ -32,11 +32,7 @@ function expandCommits (commits) {
           scope: sub.scope,
           subject: sub.subject,
           // Mark as processed to avoid re-processing
-          _processedSquash: true,
-          // Preserve other commit metadata
-          hash: commit.hash,
-          author: commit.author,
-          committer: commit.committer
+          _processedSquash: true
         })
       }
     } else {
