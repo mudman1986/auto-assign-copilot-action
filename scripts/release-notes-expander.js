@@ -26,11 +26,20 @@ function expandCommits (commits) {
     if (subCommits.length > 0) {
       // Add each sub-commit as a separate commit with proper type
       for (const sub of subCommits) {
+        // Only copy non-derived fields from the original commit
+        // Don't copy header, message, or other fields that are computed from type/scope/subject
         expanded.push({
-          ...commit,
+          hash: commit.hash,
+          committerDate: commit.committerDate,
+          author: commit.author,
+          committer: commit.committer,
+          gitTags: commit.gitTags,
+          merge: commit.merge,
           type: sub.type,
           scope: sub.scope,
           subject: sub.subject,
+          // Body is intentionally excluded as it contains the original squash merge
+          // commit list which would be confusing for individual expanded commits
           // Mark as processed to avoid re-processing
           _processedSquash: true
         })
