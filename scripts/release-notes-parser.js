@@ -3,7 +3,11 @@
  * and extract conventional commits for better release notes
  */
 
-const CONVENTIONAL_PATTERN = /^\*\s+(feat|fix|perf|revert|docs|refactor|test|build|ci|chore)(\([^)]+\))?:\s+(.+)$/
+// Supported conventional commit types
+const COMMIT_TYPES = ['feat', 'fix', 'perf', 'revert', 'docs', 'refactor', 'test', 'build', 'ci', 'chore']
+
+// Pattern to match conventional commits in squash merge bodies
+const CONVENTIONAL_PATTERN = new RegExp(`^\\*\\s+(${COMMIT_TYPES.join('|')})(\\([^)]+\\))?:\\s+(.+)$`)
 
 /**
  * Parse conventional commits from a squash merge body

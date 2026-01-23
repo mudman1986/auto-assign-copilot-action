@@ -15,6 +15,12 @@ function expandCommits (commits) {
   const expanded = []
 
   for (const commit of commits) {
+    // Skip if already processed to avoid re-processing
+    if (commit._processedSquash) {
+      expanded.push(commit)
+      continue
+    }
+
     const subCommits = parseConventionalCommits(commit.body)
 
     if (subCommits.length > 0) {
@@ -25,8 +31,8 @@ function expandCommits (commits) {
           type: sub.type,
           scope: sub.scope,
           subject: sub.subject,
-          // Clear the body to avoid re-processing
-          body: '',
+          // Mark as processed to avoid re-processing
+          _processedSquash: true,
           // Preserve other commit metadata
           hash: commit.hash,
           author: commit.author,
