@@ -3,20 +3,21 @@
  * These tests validate the semantic-release configuration and conventional commits
  */
 
-const fs = require('fs')
 const path = require('path')
 
 describe('Release Configuration', () => {
   let config
-  const configPath = path.join(__dirname, '..', '.releaserc.json')
+  const configPath = path.join(__dirname, '..', '.releaserc.js')
 
   beforeAll(() => {
-    config = JSON.parse(fs.readFileSync(configPath, 'utf8'))
+    // Clear require cache to get fresh config
+    delete require.cache[require.resolve(configPath)]
+    config = require(configPath)
   })
 
   describe('semantic-release configuration', () => {
-    test('should have .releaserc.json file', () => {
-      expect(fs.existsSync(configPath)).toBe(true)
+    test('should have .releaserc.js file', () => {
+      expect(() => require(configPath)).not.toThrow()
     })
 
     test('should have valid semantic-release configuration', () => {
@@ -36,8 +37,12 @@ describe('Release Configuration', () => {
     })
 
     test('should have release-notes-generator plugin configured', () => {
+      // Can be either the standard plugin or our custom expander
       const notesGenerator = config.plugins.find(p =>
-        Array.isArray(p) && p[0] === '@semantic-release/release-notes-generator'
+        Array.isArray(p) && (
+          p[0] === '@semantic-release/release-notes-generator' ||
+          p[0] === './scripts/release-notes-expander.js'
+        )
       )
 
       expect(notesGenerator).toBeDefined()
@@ -106,12 +111,13 @@ describe('Release Configuration', () => {
 
   describe('package.json', () => {
     test('should have semantic-release dependencies', () => {
+      const fs = require('fs')
       const packagePath = path.join(__dirname, '..', 'package.json')
       const packageJson = JSON.parse(fs.readFileSync(packagePath, 'utf8'))
 
       expect(packageJson.devDependencies['semantic-release']).toBeDefined()
       // @semantic-release/changelog and @semantic-release/git may still be in package.json
-      // but are not used in .releaserc.json per semantic-release best practices
+      // but are not used in .releaserc.js per semantic-release best practices
     })
   })
 })
