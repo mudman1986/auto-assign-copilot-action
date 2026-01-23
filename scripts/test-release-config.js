@@ -90,4 +90,3 @@ console.log('\nThis shows that conventional commits from squash merge bodies wil
 console.log('  - Extracted and parsed correctly')
 console.log('  - Properly categorized by their individual types')
 console.log('  - Displayed in their respective sections (Features, Bug Fixes, etc.)')
-

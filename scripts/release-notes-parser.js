@@ -30,36 +30,4 @@ function parseConventionalCommits (body) {
   return commits
 }
 
-/**
- * Expand commits by extracting conventional commits from squash merge bodies
- * @param {Array} commits - Original commits
- * @returns {Array} - Expanded commits
- */
-function expandSquashCommits (commits) {
-  const expandedCommits = []
-
-  for (const commit of commits) {
-    const subCommits = parseConventionalCommits(commit.body)
-
-    if (subCommits.length > 0) {
-      // Add each sub-commit as a separate commit
-      for (const subCommit of subCommits) {
-        expandedCommits.push({
-          ...commit,
-          type: subCommit.type,
-          scope: subCommit.scope,
-          subject: subCommit.subject,
-          // Mark as expanded to avoid double-processing
-          _expanded: true
-        })
-      }
-    } else {
-      // Keep original commit if no sub-commits found
-      expandedCommits.push(commit)
-    }
-  }
-
-  return expandedCommits
-}
-
-module.exports = { parseConventionalCommits, expandSquashCommits }
+module.exports = { parseConventionalCommits }
