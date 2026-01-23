@@ -6,7 +6,6 @@
  */
 
 const { parseConventionalCommits } = require('../scripts/release-notes-parser')
-const { generateNotes } = require('../scripts/release-notes-expander')
 
 // Simulate a squash merge commit
 const testCommit = {
