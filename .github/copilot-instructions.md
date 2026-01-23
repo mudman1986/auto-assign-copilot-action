@@ -109,6 +109,30 @@ grep "mudman1986/auto-assign-copilot-action@v" README.md | sort -u
 
 This ensures users always see examples with the most current version.
 
+### Updating Copilot Instructions
+
+**When to update `.github/copilot-instructions.md`:**
+- Adding new development conventions or best practices
+- Documenting new build/test/lint commands
+- Adding project-specific guidelines that Copilot should follow
+
+**How to update:**
+
+1. Make your changes to `.github/copilot-instructions.md`
+2. Test that the instructions are clear and actionable
+3. Commit with a descriptive message:
+```bash
+git add .github/copilot-instructions.md
+git commit -m "docs: update copilot instructions for [topic]"
+```
+
+**Guidelines for copilot instructions:**
+- Keep instructions concise and actionable
+- Use code examples where helpful
+- Organize related instructions under clear headings
+- Focus on project-specific conventions, not general coding practices
+- Update instructions when development workflows change
+
 ## Code Contribution Guidelines
 
 ### Summary and Documentation Files
