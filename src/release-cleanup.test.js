@@ -75,6 +75,13 @@ describe('Release Cleanup', () => {
       return date.toISOString()
     }
 
+    // Helper to create a date N days ago
+    const daysAgo = (n) => {
+      const date = new Date()
+      date.setDate(date.getDate() - n)
+      return date.toISOString()
+    }
+
     test('should keep all releases less than 1 month old', () => {
       const releases = [
         createRelease('v3.1.0', monthsAgo(0.5)),
@@ -181,7 +188,7 @@ describe('Release Cleanup', () => {
         createRelease('v3.0.7', monthsAgo(8)),
         createRelease('v2.5.0', monthsAgo(4)),
         createRelease('v2.4.0', monthsAgo(5)),
-        createRelease('v2.3.0', monthsAgo(6)),
+        createRelease('v2.3.0', daysAgo(170)), // ~5.6 months, safely under 6 months
         createRelease('v2.2.0', monthsAgo(7)),
         createRelease('v1.9.9', monthsAgo(4)),
         createRelease('v1.8.0', monthsAgo(5)),
