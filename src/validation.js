@@ -48,19 +48,14 @@ function validateLabelName (label) {
   }
 
   const trimmed = label.trim()
-
-  // Empty after trimming
-  if (trimmed.length === 0) {
+  if (!trimmed) {
     return null
   }
 
-  // GitHub label constraints: max 50 characters
   if (trimmed.length > 50) {
     throw new Error(`Label too long: ${trimmed.length} characters. Maximum is 50.`)
   }
 
-  // Only allow safe characters: alphanumeric, dash, underscore, space
-  // This prevents GraphQL injection and special character issues
   if (!/^[a-zA-Z0-9\-_ ]+$/.test(trimmed)) {
     throw new Error(`Label contains invalid characters: "${trimmed}". Only alphanumeric, dash, underscore, and space allowed.`)
   }
@@ -80,21 +75,18 @@ function validateLabelArray (labels, maxLabels = 50) {
     return []
   }
 
-  // Validate each label
-  const validatedLabels = []
-  for (const label of labels) {
+  const validatedLabels = labels.reduce((acc, label) => {
     try {
       const validated = validateLabelName(label)
       if (validated) {
-        validatedLabels.push(validated)
+        acc.push(validated)
       }
     } catch (error) {
-      // Skip invalid labels but log warning
       core.warning(`Skipping invalid label: ${error.message}`)
     }
-  }
+    return acc
+  }, [])
 
-  // Limit array size
   if (validatedLabels.length > maxLabels) {
     core.warning(`Too many labels (${validatedLabels.length}). Limiting to ${maxLabels}.`)
     return validatedLabels.slice(0, maxLabels)

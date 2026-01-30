@@ -180,31 +180,19 @@ function hasRecentRefactorIssue (closedIssues, count = 4) {
  * @returns {string|null} - Absolute path if valid, null if invalid
  */
 function validateTemplatePath (templatePath, workspaceRoot) {
-  // Reject absolute paths immediately (V03: Path Traversal)
-  if (path.isAbsolute(templatePath)) {
-    core.info(`Template path ${templatePath} is absolute, using default content`)
+  if (path.isAbsolute(templatePath) || templatePath.startsWith('\\\\')) {
+    core.info(`Template path ${templatePath} is absolute or UNC, using default content`)
     return null
   }
 
-  // Reject UNC paths (Windows network shares) (V03: Path Traversal)
-  if (templatePath.startsWith('\\\\')) {
-    core.info(`Template path ${templatePath} is a UNC path, using default content`)
-    return null
-  }
-
-  // Resolve the template path relative to the workspace
   const absolutePath = path.resolve(workspaceRoot, templatePath)
-
-  // Validate that the resolved path is within the workspace to prevent directory traversal
   const relativePath = path.relative(workspaceRoot, absolutePath)
 
-  // Check if the relative path escapes the workspace (contains '..' or is absolute)
   if (relativePath.startsWith('..') || path.isAbsolute(relativePath)) {
     core.info(`Template path ${templatePath} is outside workspace, using default content`)
     return null
   }
 
-  // Validate file extension whitelist (V03: File Extension Validation)
   const allowedExtensions = ['.md', '.txt']
   const ext = path.extname(absolutePath).toLowerCase()
   if (!allowedExtensions.includes(ext)) {
@@ -248,7 +236,6 @@ function readRefactorIssueTemplate (templatePath) {
     '**Note:** If the scope is too large for a single session, create additional issues with the `refactor` label for remaining work.'
   ].join('\n')
 
-  // If no template path provided, use default content
   if (!templatePath?.trim()) {
     core.info('No custom template path provided, using default content')
     return defaultContent
@@ -258,25 +245,19 @@ function readRefactorIssueTemplate (templatePath) {
     const workspaceRoot = process.env.GITHUB_WORKSPACE || process.cwd()
     const absolutePath = validateTemplatePath(templatePath, workspaceRoot)
 
-    if (!absolutePath) {
-      return defaultContent
-    }
-
-    // Check if file exists
-    if (!fs.existsSync(absolutePath)) {
+    if (!absolutePath || !fs.existsSync(absolutePath)) {
+      if (!absolutePath) return defaultContent
       core.info(`Template file not found at ${absolutePath}, using default content`)
       return defaultContent
     }
 
-    // Check file size limit (V03: File Size Limit - 100KB max)
     const stats = fs.statSync(absolutePath)
-    const MAX_SIZE = 100 * 1024 // 100KB
+    const MAX_SIZE = 100 * 1024
     if (stats.size > MAX_SIZE) {
       core.info(`Template file too large (${stats.size} bytes), using default content`)
       return defaultContent
     }
 
-    // Read and return the template content
     const content = fs.readFileSync(absolutePath, 'utf8')
     core.info(`Successfully loaded template from ${absolutePath}`)
     return content
@@ -293,7 +274,7 @@ function readRefactorIssueTemplate (templatePath) {
  * @returns {boolean} - True if issue was auto-created
  */
 function isAutoCreatedRefactorIssue (issue) {
-  return issue?.title?.includes('[AUTO]') ?? false
+  return issue?.title?.includes('[AUTO]') || false
 }
 
 /**
@@ -349,15 +330,11 @@ function shouldWaitForCooldown (closedIssues, cooldownDays = 7) {
  * @returns {boolean} - True if issue has the required label or no label is required
  */
 function hasRequiredLabel (issue, requiredLabel) {
-  // If no required label is specified, all issues are eligible
-  if (!requiredLabel || requiredLabel.trim() === '') {
+  if (!requiredLabel?.trim()) {
     return true
   }
 
-  // Normalize labels to handle both GraphQL and flattened structures
   const labels = normalizeIssueLabels(issue)
-
-  // Check if the issue has the required label
   return labels.some((label) => label.name === requiredLabel)
 }
 

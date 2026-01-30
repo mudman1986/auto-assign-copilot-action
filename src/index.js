@@ -36,7 +36,7 @@ async function run () {
     // Parse and validate skip labels (V06: Label Array Validation)
     const skipLabelsRaw = core.getInput('skip-labels') || 'no-ai,refining'
     const skipLabels = validateLabelArray(
-      skipLabelsRaw.split(',').map(l => l.trim()).filter(l => l.length > 0),
+      skipLabelsRaw.split(',').map(l => l.trim()).filter(Boolean),
       50
     )
 
