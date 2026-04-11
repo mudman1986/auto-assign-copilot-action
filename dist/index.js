@@ -35623,31 +35623,19 @@ function hasRecentRefactorIssue (closedIssues, count = 4) {
  * @returns {string|null} - Absolute path if valid, null if invalid
  */
 function validateTemplatePath (templatePath, workspaceRoot) {
-  // Reject absolute paths immediately (V03: Path Traversal)
-  if (path.isAbsolute(templatePath)) {
-    core.info(`Template path ${templatePath} is absolute, using default content`)
+  if (path.isAbsolute(templatePath) || templatePath.startsWith('\\\\')) {
+    core.info(`Template path ${templatePath} is absolute or UNC, using default content`)
     return null
   }
 
-  // Reject UNC paths (Windows network shares) (V03: Path Traversal)
-  if (templatePath.startsWith('\\\\')) {
-    core.info(`Template path ${templatePath} is a UNC path, using default content`)
-    return null
-  }
-
-  // Resolve the template path relative to the workspace
   const absolutePath = path.resolve(workspaceRoot, templatePath)
-
-  // Validate that the resolved path is within the workspace to prevent directory traversal
   const relativePath = path.relative(workspaceRoot, absolutePath)
 
-  // Check if the relative path escapes the workspace (contains '..' or is absolute)
   if (relativePath.startsWith('..') || path.isAbsolute(relativePath)) {
     core.info(`Template path ${templatePath} is outside workspace, using default content`)
     return null
   }
 
-  // Validate file extension whitelist (V03: File Extension Validation)
   const allowedExtensions = ['.md', '.txt']
   const ext = path.extname(absolutePath).toLowerCase()
   if (!allowedExtensions.includes(ext)) {
@@ -35691,7 +35679,6 @@ function readRefactorIssueTemplate (templatePath) {
     '**Note:** If the scope is too large for a single session, create additional issues with the `refactor` label for remaining work.'
   ].join('\n')
 
-  // If no template path provided, use default content
   if (!templatePath?.trim()) {
     core.info('No custom template path provided, using default content')
     return defaultContent
@@ -35701,25 +35688,19 @@ function readRefactorIssueTemplate (templatePath) {
     const workspaceRoot = process.env.GITHUB_WORKSPACE || process.cwd()
     const absolutePath = validateTemplatePath(templatePath, workspaceRoot)
 
-    if (!absolutePath) {
-      return defaultContent
-    }
-
-    // Check if file exists
-    if (!fs.existsSync(absolutePath)) {
+    if (!absolutePath || !fs.existsSync(absolutePath)) {
+      if (!absolutePath) return defaultContent
       core.info(`Template file not found at ${absolutePath}, using default content`)
       return defaultContent
     }
 
-    // Check file size limit (V03: File Size Limit - 100KB max)
     const stats = fs.statSync(absolutePath)
-    const MAX_SIZE = 100 * 1024 // 100KB
+    const MAX_SIZE = 100 * 1024
     if (stats.size > MAX_SIZE) {
       core.info(`Template file too large (${stats.size} bytes), using default content`)
       return defaultContent
     }
 
-    // Read and return the template content
     const content = fs.readFileSync(absolutePath, 'utf8')
     core.info(`Successfully loaded template from ${absolutePath}`)
     return content
@@ -35736,7 +35717,7 @@ function readRefactorIssueTemplate (templatePath) {
  * @returns {boolean} - True if issue was auto-created
  */
 function isAutoCreatedRefactorIssue (issue) {
-  return issue?.title?.includes('[AUTO]') ?? false
+  return issue?.title?.includes('[AUTO]') || false
 }
 
 /**
@@ -35792,15 +35773,11 @@ function shouldWaitForCooldown (closedIssues, cooldownDays = 7) {
  * @returns {boolean} - True if issue has the required label or no label is required
  */
 function hasRequiredLabel (issue, requiredLabel) {
-  // If no required label is specified, all issues are eligible
-  if (!requiredLabel || requiredLabel.trim() === '') {
+  if (!requiredLabel?.trim()) {
     return true
   }
 
-  // Normalize labels to handle both GraphQL and flattened structures
   const labels = normalizeIssueLabels(issue)
-
-  // Check if the issue has the required label
   return labels.some((label) => label.name === requiredLabel)
 }
 
@@ -35872,19 +35849,14 @@ function validateLabelName (label) {
   }
 
   const trimmed = label.trim()
-
-  // Empty after trimming
-  if (trimmed.length === 0) {
+  if (!trimmed) {
     return null
   }
 
-  // GitHub label constraints: max 50 characters
   if (trimmed.length > 50) {
     throw new Error(`Label too long: ${trimmed.length} characters. Maximum is 50.`)
   }
 
-  // Only allow safe characters: alphanumeric, dash, underscore, space
-  // This prevents GraphQL injection and special character issues
   if (!/^[a-zA-Z0-9\-_ ]+$/.test(trimmed)) {
     throw new Error(`Label contains invalid characters: "${trimmed}". Only alphanumeric, dash, underscore, and space allowed.`)
   }
@@ -35904,21 +35876,18 @@ function validateLabelArray (labels, maxLabels = 50) {
     return []
   }
 
-  // Validate each label
-  const validatedLabels = []
-  for (const label of labels) {
+  const validatedLabels = labels.reduce((acc, label) => {
     try {
       const validated = validateLabelName(label)
       if (validated) {
-        validatedLabels.push(validated)
+        acc.push(validated)
       }
     } catch (error) {
-      // Skip invalid labels but log warning
       core.warning(`Skipping invalid label: ${error.message}`)
     }
-  }
+    return acc
+  }, [])
 
-  // Limit array size
   if (validatedLabels.length > maxLabels) {
     core.warning(`Too many labels (${validatedLabels.length}). Limiting to ${maxLabels}.`)
     return validatedLabels.slice(0, maxLabels)
@@ -35985,6 +35954,24 @@ module.exports = async ({
     owner: context.repo.owner,
     repo: context.repo.repo
   }
+
+  // Common GraphQL fragment for issue fields
+  const ISSUE_FIELDS = `
+    id
+    number
+    title
+    url
+    body
+    assignees(first: 10) {
+      nodes { login id }
+    }
+    labels(first: 10) {
+      nodes { name }
+    }
+    trackedIssues(first: 1) {
+      totalCount
+    }
+  `
 
   // Wait for grace period if this is an issue event and wait-seconds is configured
   if (context.eventName === 'issues' && waitSeconds > 0) {
@@ -36066,6 +36053,28 @@ module.exports = async ({
     )
   }
 
+  /**
+   * Log and handle assignment (dry run or actual)
+   * @param {Object} issue - Issue to assign
+   * @param {string} type - Type of issue ('issue' or 'refactor issue')
+   * @returns {Promise<Object>} - Result object with issue
+   */
+  async function handleAssignment (issue, type = 'issue') {
+    if (dryRun) {
+      core.info(`[DRY RUN] Would assign ${type} #${issue.number} to Copilot`)
+      core.info(`[DRY RUN] Issue title: ${issue.title}`)
+      core.info(`[DRY RUN] Issue URL: ${issue.url}`)
+      return { issue }
+    }
+
+    core.info(`Assigning ${type} #${issue.number} to Copilot...`)
+    await assignCopilotToIssue(issue.id)
+    core.info(`✓ Successfully assigned ${type} #${issue.number} to Copilot`)
+    core.info(`  Title: ${issue.title}`)
+    core.info(`  URL: ${issue.url}`)
+    return { issue }
+  }
+
   // Step 0: Determine mode based on recent closed issues (for issue close events)
   let effectiveMode = mode
   if (context.eventName === 'issues' && mode === 'auto') {
@@ -36073,7 +36082,6 @@ module.exports = async ({
       `Checking last ${refactorThreshold} closed issues to determine if refactor is needed...`
     )
 
-    // Get last N+1 closed issues (including the one just closed)
     const fetchCount = refactorThreshold + 1
     const closedIssuesResponse = await github.graphql(
       `
@@ -36101,7 +36109,6 @@ module.exports = async ({
     const closedIssues = closedIssuesResponse.repository.issues.nodes
     core.info(`Found ${closedIssues.length} recently closed issues`)
 
-    // Check if any of the last N closed issues have refactor label
     const hasRefactor = helpers.hasRecentRefactorIssue(
       closedIssues,
       refactorThreshold
@@ -36156,19 +36163,7 @@ module.exports = async ({
         repository(owner: $owner, name: $repo) {
           issues(first: 100, states: OPEN) {
             nodes {
-              id
-              number
-              title
-              url
-              assignees(first: 10) {
-                nodes {
-                  login
-                  id
-                }
-              }
-              labels(first: 10) {
-                nodes { name }
-              }
+              ${ISSUE_FIELDS}
             }
           }
         }
@@ -36230,20 +36225,7 @@ module.exports = async ({
           repository(owner: $owner, name: $repo) {
             issues(first: 100, states: OPEN, labels: ["refactor"], orderBy: {field: CREATED_AT, direction: ASC}) {
               nodes {
-                id
-                number
-                title
-                body
-                url
-                assignees(first: 10) {
-                  nodes { login }
-                }
-                labels(first: 10) {
-                  nodes { name }
-                }
-                trackedIssues(first: 1) {
-                  totalCount
-                }
+                ${ISSUE_FIELDS}
               }
             }
           }
@@ -36272,28 +36254,7 @@ module.exports = async ({
       core.info(
         `Found available refactor issue #${availableRefactorIssue.number}: ${availableRefactorIssue.title}`
       )
-
-      // Assign the existing refactor issue to Copilot
-      if (dryRun) {
-        core.info(
-          `[DRY RUN] Would assign refactor issue #${availableRefactorIssue.number} to Copilot`
-        )
-        core.info(`[DRY RUN] Issue URL: ${availableRefactorIssue.url}`)
-        return { issue: availableRefactorIssue }
-      }
-
-      core.info(
-        `Assigning refactor issue #${availableRefactorIssue.number} to Copilot...`
-      )
-
-      await assignCopilotToIssue(availableRefactorIssue.id)
-
-      core.info(
-        `✓ Successfully assigned refactor issue #${availableRefactorIssue.number} to Copilot`
-      )
-      core.info(`  Title: ${availableRefactorIssue.title}`)
-      core.info(`  URL: ${availableRefactorIssue.url}`)
-      return { issue: availableRefactorIssue }
+      return handleAssignment(availableRefactorIssue, 'refactor issue')
     }
 
     // Check if we should create a new refactor issue
@@ -36315,12 +36276,9 @@ module.exports = async ({
    *                                    issues in the last N closed issues)
    */
   async function createRefactorIssueFunc (bypassCooldown = false) {
-    // Check cooldown period before creating a new auto-created refactor issue
-    // Skip cooldown check if bypassCooldown is true (e.g., threshold reached)
     if (!bypassCooldown) {
       core.info('Checking cooldown period for auto-created refactor issues...')
 
-      // Fetch recent closed issues to check for cooldown
       const recentClosedResponse = await github.graphql(
         `
           query($owner: String!, $repo: String!) {
@@ -36371,7 +36329,7 @@ module.exports = async ({
       repoVars
     )
 
-    if (!labelInfo.repository.label) {
+    if (!labelInfo?.repository?.label) {
       throw new Error('Refactor label not found in repository.')
     }
     const refactorLabelId = labelInfo.repository.label.id
@@ -36500,20 +36458,7 @@ module.exports = async ({
             repository(owner: $owner, name: $repo) {
               issues(first: 50, states: OPEN, labels: [$label], orderBy: {field: CREATED_AT, direction: ASC}) {
                 nodes {
-                  id
-                  number
-                  title
-                  body
-                  url
-                  assignees(first: 10) {
-                    nodes { login }
-                  }
-                  labels(first: 10) {
-                    nodes { name }
-                  }
-                  trackedIssues(first: 1) {
-                    totalCount
-                  }
+                  ${ISSUE_FIELDS}
                 }
               }
             }
@@ -36558,20 +36503,7 @@ module.exports = async ({
             repository(owner: $owner, name: $repo) {
               issues(first: 100, states: OPEN, orderBy: {field: CREATED_AT, direction: ASC}) {
                 nodes {
-                  id
-                  number
-                  title
-                  url
-                  body
-                  assignees(first: 10) {
-                    nodes { login }
-                  }
-                  labels(first: 10) {
-                    nodes { name }
-                  }
-                  trackedIssues(first: 1) {
-                    totalCount
-                  }
+                  ${ISSUE_FIELDS}
                 }
               }
             }
@@ -36622,31 +36554,10 @@ module.exports = async ({
         'Creating or assigning a refactor issue instead to ensure Copilot has work.'
       )
 
-      // If no regular issues are available, handle refactor mode
-      // Don't bypass cooldown here - threshold was not reached
       return handleRefactorMode(false)
     }
 
-    // Assign the issue to Copilot
-    if (dryRun) {
-      core.info(
-        `[DRY RUN] Would assign issue #${issueToAssign.number} to Copilot`
-      )
-      core.info(`[DRY RUN] Issue title: ${issueToAssign.title}`)
-      core.info(`[DRY RUN] Issue URL: ${issueToAssign.url}`)
-      return { issue: issueToAssign }
-    }
-
-    core.info(`Assigning issue #${issueToAssign.number} to Copilot...`)
-
-    await assignCopilotToIssue(issueToAssign.id)
-
-    core.info(
-      `✓ Successfully assigned issue #${issueToAssign.number} to Copilot`
-    )
-    core.info(`  Title: ${issueToAssign.title}`)
-    core.info(`  URL: ${issueToAssign.url}`)
-    return { issue: issueToAssign }
+    return handleAssignment(issueToAssign, 'issue')
   }
 }
 
@@ -37001,7 +36912,7 @@ async function run () {
     // Parse and validate skip labels (V06: Label Array Validation)
     const skipLabelsRaw = core.getInput('skip-labels') || 'no-ai,refining'
     const skipLabels = validateLabelArray(
-      skipLabelsRaw.split(',').map(l => l.trim()).filter(l => l.length > 0),
+      skipLabelsRaw.split(',').map(l => l.trim()).filter(Boolean),
       50
     )
 
