@@ -7,9 +7,9 @@
  * based on priority labels and various constraints.
  */
 
-const core = require('@actions/core')
 const fs = require('fs')
 const path = require('path')
+const logger = require('./logger.js')
 
 // Constants
 const MS_PER_DAY = 1000 * 60 * 60 * 24
@@ -181,7 +181,7 @@ function hasRecentRefactorIssue (closedIssues, count = 4) {
  */
 function validateTemplatePath (templatePath, workspaceRoot) {
   if (path.isAbsolute(templatePath) || templatePath.startsWith('\\\\')) {
-    core.info(`Template path ${templatePath} is absolute or UNC, using default content`)
+    logger.info(`Template path ${templatePath} is absolute or UNC, using default content`)
     return null
   }
 
@@ -189,14 +189,14 @@ function validateTemplatePath (templatePath, workspaceRoot) {
   const relativePath = path.relative(workspaceRoot, absolutePath)
 
   if (relativePath.startsWith('..') || path.isAbsolute(relativePath)) {
-    core.info(`Template path ${templatePath} is outside workspace, using default content`)
+    logger.info(`Template path ${templatePath} is outside workspace, using default content`)
     return null
   }
 
   const allowedExtensions = ['.md', '.txt']
   const ext = path.extname(absolutePath).toLowerCase()
   if (!allowedExtensions.includes(ext)) {
-    core.info(`Template file extension ${ext} not allowed, using default content`)
+    logger.info(`Template file extension ${ext} not allowed, using default content`)
     return null
   }
 
@@ -237,7 +237,7 @@ function readRefactorIssueTemplate (templatePath) {
   ].join('\n')
 
   if (!templatePath?.trim()) {
-    core.info('No custom template path provided, using default content')
+    logger.info('No custom template path provided, using default content')
     return defaultContent
   }
 
@@ -247,22 +247,22 @@ function readRefactorIssueTemplate (templatePath) {
 
     if (!absolutePath || !fs.existsSync(absolutePath)) {
       if (!absolutePath) return defaultContent
-      core.info(`Template file not found at ${absolutePath}, using default content`)
+      logger.info(`Template file not found at ${absolutePath}, using default content`)
       return defaultContent
     }
 
     const stats = fs.statSync(absolutePath)
     const MAX_SIZE = 100 * 1024
     if (stats.size > MAX_SIZE) {
-      core.info(`Template file too large (${stats.size} bytes), using default content`)
+      logger.info(`Template file too large (${stats.size} bytes), using default content`)
       return defaultContent
     }
 
     const content = fs.readFileSync(absolutePath, 'utf8')
-    core.info(`Successfully loaded template from ${absolutePath}`)
+    logger.info(`Successfully loaded template from ${absolutePath}`)
     return content
   } catch (error) {
-    core.info(`Error reading template file: ${error.message}, using default content`)
+    logger.info(`Error reading template file: ${error.message}, using default content`)
     return defaultContent
   }
 }

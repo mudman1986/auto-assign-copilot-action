@@ -5,8 +5,6 @@
  * This file integrates with GitHub Actions using @actions/core and @actions/github
  */
 
-const core = require('@actions/core')
-const github = require('@actions/github')
 const executeWorkflow = require('./workflow.js')
 const { validatePositiveInteger, validateLabelName, validateLabelArray } = require('./validation.js')
 
@@ -14,7 +12,14 @@ const { validatePositiveInteger, validateLabelName, validateLabelArray } = requi
  * Main action execution
  */
 async function run () {
+  let core
+  let github
   try {
+    [core, github] = await Promise.all([
+      import('@actions/core'),
+      import('@actions/github')
+    ])
+
     // Get inputs from action.yml
     const token = core.getInput('github-token', { required: true })
     const mode = core.getInput('mode') || 'auto'
@@ -70,8 +75,14 @@ async function run () {
 
     core.info('✓ Action completed successfully')
   } catch (error) {
-    core.setFailed(`Action failed: ${error.message}`)
-    core.error(error.stack || error.message)
+    if (core) {
+      core.setFailed(`Action failed: ${error.message}`)
+      core.error(error.stack || error.message)
+      return
+    }
+
+    console.error(error.stack || error.message)
+    process.exitCode = 1
   }
 }
 

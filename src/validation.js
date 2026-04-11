@@ -5,7 +5,7 @@
  * Addresses vulnerabilities: V01 (Integer Overflow), V02 (GraphQL Injection), V06 (Label Arrays)
  */
 
-const core = require('@actions/core')
+const logger = require('./logger.js')
 
 /**
  * Validate and parse a positive integer with bounds checking
@@ -82,13 +82,13 @@ function validateLabelArray (labels, maxLabels = 50) {
         acc.push(validated)
       }
     } catch (error) {
-      core.warning(`Skipping invalid label: ${error.message}`)
+      logger.warning(`Skipping invalid label: ${error.message}`)
     }
     return acc
   }, [])
 
   if (validatedLabels.length > maxLabels) {
-    core.warning(`Too many labels (${validatedLabels.length}). Limiting to ${maxLabels}.`)
+    logger.warning(`Too many labels (${validatedLabels.length}). Limiting to ${maxLabels}.`)
     return validatedLabels.slice(0, maxLabels)
   }
 
