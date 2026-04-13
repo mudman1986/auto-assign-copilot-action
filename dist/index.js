@@ -361,18 +361,45 @@ module.exports = {
 /***/ }),
 
 /***/ 8033:
-/***/ ((module) => {
+/***/ ((module, __unused_webpack_exports, __nccwpck_require__) => {
+
+let corePromise
+
+async function getCore () {
+  corePromise ??= Promise.all(/* import() */[__nccwpck_require__.e(119), __nccwpck_require__.e(421)]).then(__nccwpck_require__.bind(__nccwpck_require__, 6421))
+    .then(module => module.default || module)
+    .catch(() => null)
+
+  return corePromise
+}
+
+function logWithCore (method, fallback, message) {
+  const text = String(message)
+
+  getCore()
+    .then((core) => {
+      if (core?.[method]) {
+        core[method](text)
+        return
+      }
+
+      fallback(text)
+    })
+    .catch(() => {
+      fallback(text)
+    })
+}
 
 function info (message) {
-  console.log(message)
+  logWithCore('info', console.log, message)
 }
 
 function warning (message) {
-  console.warn(`::warning::${message}`)
+  logWithCore('warning', console.warn, message)
 }
 
 function error (message) {
-  console.error(message)
+  logWithCore('error', console.error, message)
 }
 
 module.exports = {
