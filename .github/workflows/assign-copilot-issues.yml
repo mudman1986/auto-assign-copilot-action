@@ -64,10 +64,10 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
 
       - name: Assign Copilot to issue
-        uses: mudman1986/auto-assign-copilot-action@v2.0.0
+        uses: mudman1986/auto-assign-copilot-action@v2.0.3
         with:
           github-token: ${{ secrets.COPILOT_ASSIGN_PAT }}
           mode: ${{ inputs.mode || 'auto' }}
