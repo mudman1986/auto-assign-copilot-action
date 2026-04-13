@@ -1,5 +1,3 @@
-#!/usr/bin/env node
-
 jest.unmock('./logger.js')
 
 const logger = require('./logger.js')

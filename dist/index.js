@@ -365,10 +365,16 @@ module.exports = {
 
 let corePromise
 
-async function getCore () {
-  corePromise ??= Promise.all(/* import() */[__nccwpck_require__.e(119), __nccwpck_require__.e(421)]).then(__nccwpck_require__.bind(__nccwpck_require__, 6421))
+function loadCore () {
+  return Promise.all(/* import() */[__nccwpck_require__.e(119), __nccwpck_require__.e(421)]).then(__nccwpck_require__.bind(__nccwpck_require__, 6421))
     .then(module => module.default || module)
     .catch(() => null)
+}
+
+let coreLoader = loadCore
+
+async function getCore () {
+  corePromise ??= coreLoader()
 
   return corePromise
 }
@@ -405,7 +411,16 @@ function error (message) {
 module.exports = {
   info,
   warning,
-  error
+  error,
+  __getCoreForTests: getCore,
+  __setCoreLoaderForTests (loader) {
+    coreLoader = loader
+    corePromise = undefined
+  },
+  __resetCoreLoaderForTests () {
+    coreLoader = loadCore
+    corePromise = undefined
+  }
 }
 
 
