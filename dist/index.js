@@ -382,7 +382,7 @@ async function getCore () {
 function logWithCore (method, fallback, message) {
   const text = String(message)
 
-  getCore()
+  return getCore()
     .then((core) => {
       if (core?.[method]) {
         core[method](text)
@@ -397,15 +397,15 @@ function logWithCore (method, fallback, message) {
 }
 
 function info (message) {
-  logWithCore('info', console.log, message)
+  return logWithCore('info', console.log, message)
 }
 
 function warning (message) {
-  logWithCore('warning', console.warn, message)
+  return logWithCore('warning', console.warn, message)
 }
 
 function error (message) {
-  logWithCore('error', console.error, message)
+  return logWithCore('error', console.error, message)
 }
 
 module.exports = {
