@@ -21,8 +21,8 @@
  * @param {number} params.refactorCooldownDays - Number of days to wait before creating a new auto-created refactor issue (default: 7)
  */
 
-const core = require('@actions/core')
 const helpers = require('./helpers.js')
+const logger = require('./logger.js')
 
 module.exports = async ({
   github,
@@ -46,13 +46,31 @@ module.exports = async ({
     repo: context.repo.repo
   }
 
+  // Common GraphQL fragment for issue fields
+  const ISSUE_FIELDS = `
+    id
+    number
+    title
+    url
+    body
+    assignees(first: 10) {
+      nodes { login id }
+    }
+    labels(first: 10) {
+      nodes { name }
+    }
+    trackedIssues(first: 1) {
+      totalCount
+    }
+  `
+
   // Wait for grace period if this is an issue event and wait-seconds is configured
   if (context.eventName === 'issues' && waitSeconds > 0) {
-    core.info(
+    logger.info(
       `Issue event detected. Waiting ${waitSeconds} seconds for grace period before proceeding...`
     )
     await new Promise((resolve) => setTimeout(resolve, waitSeconds * 1000))
-    core.info('Grace period complete. Proceeding with assignment.')
+    logger.info('Grace period complete. Proceeding with assignment.')
   }
 
   /**
@@ -126,14 +144,35 @@ module.exports = async ({
     )
   }
 
+  /**
+   * Log and handle assignment (dry run or actual)
+   * @param {Object} issue - Issue to assign
+   * @param {string} type - Type of issue ('issue' or 'refactor issue')
+   * @returns {Promise<Object>} - Result object with issue
+   */
+  async function handleAssignment (issue, type = 'issue') {
+    if (dryRun) {
+      logger.info(`[DRY RUN] Would assign ${type} #${issue.number} to Copilot`)
+      logger.info(`[DRY RUN] Issue title: ${issue.title}`)
+      logger.info(`[DRY RUN] Issue URL: ${issue.url}`)
+      return { issue }
+    }
+
+    logger.info(`Assigning ${type} #${issue.number} to Copilot...`)
+    await assignCopilotToIssue(issue.id)
+    logger.info(`✓ Successfully assigned ${type} #${issue.number} to Copilot`)
+    logger.info(`  Title: ${issue.title}`)
+    logger.info(`  URL: ${issue.url}`)
+    return { issue }
+  }
+
   // Step 0: Determine mode based on recent closed issues (for issue close events)
   let effectiveMode = mode
   if (context.eventName === 'issues' && mode === 'auto') {
-    core.info(
+    logger.info(
       `Checking last ${refactorThreshold} closed issues to determine if refactor is needed...`
     )
 
-    // Get last N+1 closed issues (including the one just closed)
     const fetchCount = refactorThreshold + 1
     const closedIssuesResponse = await github.graphql(
       `
@@ -159,27 +198,26 @@ module.exports = async ({
     )
 
     const closedIssues = closedIssuesResponse.repository.issues.nodes
-    core.info(`Found ${closedIssues.length} recently closed issues`)
+    logger.info(`Found ${closedIssues.length} recently closed issues`)
 
-    // Check if any of the last N closed issues have refactor label
     const hasRefactor = helpers.hasRecentRefactorIssue(
       closedIssues,
       refactorThreshold
     )
 
     if (!hasRefactor) {
-      core.info(
+      logger.info(
         `None of the last ${refactorThreshold} closed issues have refactor label - switching to refactor mode`
       )
       effectiveMode = 'refactor'
     } else {
-      core.info(
+      logger.info(
         `At least one of the last ${refactorThreshold} closed issues has refactor label - staying in auto mode`
       )
     }
   }
 
-  core.info(`Effective mode: ${effectiveMode}`)
+  logger.info(`Effective mode: ${effectiveMode}`)
 
   // Step 1: Get repo ID, Copilot bot ID
   const repoInfo = await github.graphql(
@@ -204,31 +242,19 @@ module.exports = async ({
     throw new Error('Copilot bot agent not found in suggestedActors')
   }
   const copilotBotId = copilotBot.id
-  core.info(
+  logger.info(
     `Found Copilot bot: login="${copilotBot.login}", id="${copilotBotId}"`
   )
 
   // Step 2: Check if Copilot is already assigned to an issue
-  core.info('Querying for all open issues to check assignees...')
+  logger.info('Querying for all open issues to check assignees...')
   const allIssuesResponse = await github.graphql(
     `
       query($owner: String!, $repo: String!) {
         repository(owner: $owner, name: $repo) {
           issues(first: 100, states: OPEN) {
             nodes {
-              id
-              number
-              title
-              url
-              assignees(first: 10) {
-                nodes {
-                  login
-                  id
-                }
-              }
-              labels(first: 10) {
-                nodes { name }
-              }
+              ${ISSUE_FIELDS}
             }
           }
         }
@@ -238,14 +264,14 @@ module.exports = async ({
   )
 
   const allIssues = allIssuesResponse.repository.issues.nodes
-  core.info(`Found ${allIssues.length} total open issues`)
+  logger.info(`Found ${allIssues.length} total open issues`)
 
   const currentIssues = allIssues.filter((issue) =>
     issue.assignees.nodes.some((assignee) => assignee.id === copilotBotId)
   )
 
   if (currentIssues.length > 0) {
-    core.info(
+    logger.info(
       `Found ${currentIssues.length} issue(s) assigned to copilot`
     )
 
@@ -255,10 +281,10 @@ module.exports = async ({
       force
     )
     if (!shouldAssign) {
-      core.info(`Skipping assignment: ${reason}`)
+      logger.info(`Skipping assignment: ${reason}`)
       return
     }
-    core.info(`Proceeding with assignment: ${reason}`)
+    logger.info(`Proceeding with assignment: ${reason}`)
   }
 
   // Step 3: Handle different modes
@@ -281,7 +307,7 @@ module.exports = async ({
    *                                    issues in the last N closed issues)
    */
   async function handleRefactorMode (bypassCooldown = false) {
-    core.info('Refactor mode: checking for available refactor issues...')
+    logger.info('Refactor mode: checking for available refactor issues...')
 
     // Get all open issues with detailed info including trackedIssues
     const refactorIssuesResponse = await github.graphql(
@@ -290,20 +316,7 @@ module.exports = async ({
           repository(owner: $owner, name: $repo) {
             issues(first: 100, states: OPEN, labels: ["refactor"], orderBy: {field: CREATED_AT, direction: ASC}) {
               nodes {
-                id
-                number
-                title
-                body
-                url
-                assignees(first: 10) {
-                  nodes { login }
-                }
-                labels(first: 10) {
-                  nodes { name }
-                }
-                trackedIssues(first: 1) {
-                  totalCount
-                }
+                ${ISSUE_FIELDS}
               }
             }
           }
@@ -313,7 +326,7 @@ module.exports = async ({
     )
 
     const refactorIssues = refactorIssuesResponse.repository.issues.nodes
-    core.info(
+    logger.info(
       `Found ${refactorIssues.length} open issues with refactor label`
     )
 
@@ -329,42 +342,21 @@ module.exports = async ({
     )
 
     if (availableRefactorIssue) {
-      core.info(
+      logger.info(
         `Found available refactor issue #${availableRefactorIssue.number}: ${availableRefactorIssue.title}`
       )
-
-      // Assign the existing refactor issue to Copilot
-      if (dryRun) {
-        core.info(
-          `[DRY RUN] Would assign refactor issue #${availableRefactorIssue.number} to Copilot`
-        )
-        core.info(`[DRY RUN] Issue URL: ${availableRefactorIssue.url}`)
-        return { issue: availableRefactorIssue }
-      }
-
-      core.info(
-        `Assigning refactor issue #${availableRefactorIssue.number} to Copilot...`
-      )
-
-      await assignCopilotToIssue(availableRefactorIssue.id)
-
-      core.info(
-        `✓ Successfully assigned refactor issue #${availableRefactorIssue.number} to Copilot`
-      )
-      core.info(`  Title: ${availableRefactorIssue.title}`)
-      core.info(`  URL: ${availableRefactorIssue.url}`)
-      return { issue: availableRefactorIssue }
+      return handleAssignment(availableRefactorIssue, 'refactor issue')
     }
 
     // Check if we should create a new refactor issue
     if (!createRefactorIssue) {
-      core.info(
+      logger.info(
         'No available refactor issues found, but create-refactor-issue is disabled. Skipping refactor issue creation.'
       )
       return
     }
 
-    core.info('No available refactor issues found - creating a new one')
+    logger.info('No available refactor issues found - creating a new one')
     return createRefactorIssueFunc(bypassCooldown)
   }
 
@@ -375,12 +367,9 @@ module.exports = async ({
    *                                    issues in the last N closed issues)
    */
   async function createRefactorIssueFunc (bypassCooldown = false) {
-    // Check cooldown period before creating a new auto-created refactor issue
-    // Skip cooldown check if bypassCooldown is true (e.g., threshold reached)
     if (!bypassCooldown) {
-      core.info('Checking cooldown period for auto-created refactor issues...')
+      logger.info('Checking cooldown period for auto-created refactor issues...')
 
-      // Fetch recent closed issues to check for cooldown
       const recentClosedResponse = await github.graphql(
         `
           query($owner: String!, $repo: String!) {
@@ -408,13 +397,13 @@ module.exports = async ({
       )
 
       if (shouldWait) {
-        core.info(`Skipping refactor issue creation: ${reason}`)
+        logger.info(`Skipping refactor issue creation: ${reason}`)
         return
       }
 
-      core.info(`Proceeding with refactor issue creation: ${reason}`)
+      logger.info(`Proceeding with refactor issue creation: ${reason}`)
     } else {
-      core.info('Refactor threshold reached - bypassing cooldown check')
+      logger.info('Refactor threshold reached - bypassing cooldown check')
     }
 
     // Get refactor label ID
@@ -431,7 +420,7 @@ module.exports = async ({
       repoVars
     )
 
-    if (!labelInfo.repository.label) {
+    if (!labelInfo?.repository?.label) {
       throw new Error('Refactor label not found in repository.')
     }
     const refactorLabelId = labelInfo.repository.label.id
@@ -444,10 +433,10 @@ module.exports = async ({
 
     // Create and assign issue to Copilot
     if (dryRun) {
-      core.info(
+      logger.info(
         `[DRY RUN] Would create refactor issue with title: ${issueTitle}`
       )
-      core.info('[DRY RUN] Would assign to Copilot bot')
+      logger.info('[DRY RUN] Would assign to Copilot bot')
       // Return a mock issue for dry-run mode
       return {
         issue: {
@@ -488,7 +477,7 @@ module.exports = async ({
       }
     )
 
-    core.info(`Created Copilot-assigned issue: ${res.createIssue.issue.url}`)
+    logger.info(`Created Copilot-assigned issue: ${res.createIssue.issue.url}`)
 
     // Add refactor label to the issue
     try {
@@ -519,10 +508,10 @@ module.exports = async ({
         }
       )
 
-      core.info('Added \'refactor\' label to issue')
+      logger.info('Added \'refactor\' label to issue')
     } catch (error) {
-      core.error(`Failed to add refactor label: ${error.message}`)
-      core.error(
+      logger.error(`Failed to add refactor label: ${error.message}`)
+      logger.error(
         'Issue was created successfully but label could not be added.'
       )
       // Don't throw - issue was created successfully
@@ -552,7 +541,7 @@ module.exports = async ({
 
     // Try to find an issue by priority
     for (const label of labelPriority) {
-      core.info(`Searching for issues with label: ${label}`)
+      logger.info(`Searching for issues with label: ${label}`)
 
       const issues = await github.graphql(
         `
@@ -560,20 +549,7 @@ module.exports = async ({
             repository(owner: $owner, name: $repo) {
               issues(first: 50, states: OPEN, labels: [$label], orderBy: {field: CREATED_AT, direction: ASC}) {
                 nodes {
-                  id
-                  number
-                  title
-                  body
-                  url
-                  assignees(first: 10) {
-                    nodes { login }
-                  }
-                  labels(first: 10) {
-                    nodes { name }
-                  }
-                  trackedIssues(first: 1) {
-                    totalCount
-                  }
+                  ${ISSUE_FIELDS}
                 }
               }
             }
@@ -585,7 +561,7 @@ module.exports = async ({
         }
       )
 
-      core.info(
+      logger.info(
         `  Found ${issues.repository.issues.nodes.length} issues with label "${label}"`
       )
 
@@ -601,7 +577,7 @@ module.exports = async ({
         requiredLabel
       )
       if (issueToAssign) {
-        core.info(
+        logger.info(
           `Found issue to assign: ${context.repo.owner}/${context.repo.repo}#${issueToAssign.number}`
         )
         break
@@ -610,7 +586,7 @@ module.exports = async ({
 
     // If no issue with priority labels, try other open issues
     if (!issueToAssign && !labelOverride) {
-      core.info('Searching for any open unassigned issue...')
+      logger.info('Searching for any open unassigned issue...')
 
       const allIssues = await github.graphql(
         `
@@ -618,20 +594,7 @@ module.exports = async ({
             repository(owner: $owner, name: $repo) {
               issues(first: 100, states: OPEN, orderBy: {field: CREATED_AT, direction: ASC}) {
                 nodes {
-                  id
-                  number
-                  title
-                  url
-                  body
-                  assignees(first: 10) {
-                    nodes { login }
-                  }
-                  labels(first: 10) {
-                    nodes { name }
-                  }
-                  trackedIssues(first: 1) {
-                    totalCount
-                  }
+                  ${ISSUE_FIELDS}
                 }
               }
             }
@@ -661,51 +624,30 @@ module.exports = async ({
         requiredLabel
       )
       if (issueToAssign) {
-        core.info(
+        logger.info(
           `Found issue to assign: ${context.repo.owner}/${context.repo.repo}#${issueToAssign.number}`
         )
       }
     }
 
     if (!issueToAssign) {
-      core.info('No suitable issue found to assign to Copilot.')
+      logger.info('No suitable issue found to assign to Copilot.')
 
       // Check if we should create a refactor issue
       if (!createRefactorIssue) {
-        core.info(
+        logger.info(
           'Skipping refactor issue creation (create-refactor-issue is disabled).'
         )
         return
       }
 
-      core.info(
+      logger.info(
         'Creating or assigning a refactor issue instead to ensure Copilot has work.'
       )
 
-      // If no regular issues are available, handle refactor mode
-      // Don't bypass cooldown here - threshold was not reached
       return handleRefactorMode(false)
     }
 
-    // Assign the issue to Copilot
-    if (dryRun) {
-      core.info(
-        `[DRY RUN] Would assign issue #${issueToAssign.number} to Copilot`
-      )
-      core.info(`[DRY RUN] Issue title: ${issueToAssign.title}`)
-      core.info(`[DRY RUN] Issue URL: ${issueToAssign.url}`)
-      return { issue: issueToAssign }
-    }
-
-    core.info(`Assigning issue #${issueToAssign.number} to Copilot...`)
-
-    await assignCopilotToIssue(issueToAssign.id)
-
-    core.info(
-      `✓ Successfully assigned issue #${issueToAssign.number} to Copilot`
-    )
-    core.info(`  Title: ${issueToAssign.title}`)
-    core.info(`  URL: ${issueToAssign.url}`)
-    return { issue: issueToAssign }
+    return handleAssignment(issueToAssign, 'issue')
   }
 }

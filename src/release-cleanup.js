@@ -65,22 +65,17 @@ function isOlderThanMonths (dateString, months) {
  * @returns {Array} - Filtered array of releases to keep
  */
 function filterReleasesToKeep (releases) {
-  if (!releases || !Array.isArray(releases) || releases.length === 0) {
+  if (!releases?.length) {
     return []
   }
 
-  // Parse and sort releases by version (descending)
   const parsedReleases = releases
-    .map(release => {
-      const version = parseVersion(release.tag_name)
-      return {
-        ...release,
-        version
-      }
-    })
+    .map(release => ({
+      ...release,
+      version: parseVersion(release.tag_name)
+    }))
     .filter(r => r.version !== null)
     .sort((a, b) => {
-      // Sort by major, then minor, then patch (descending)
       if (a.version.major !== b.version.major) {
         return b.version.major - a.version.major
       }
@@ -90,7 +85,6 @@ function filterReleasesToKeep (releases) {
       return b.version.patch - a.version.patch
     })
 
-  // Group by major version
   const majorGroups = new Map()
   parsedReleases.forEach(release => {
     const major = release.version.major
@@ -100,35 +94,20 @@ function filterReleasesToKeep (releases) {
     majorGroups.get(major).push(release)
   })
 
-  // Get top 3 major versions
-  const sortedMajors = Array.from(majorGroups.keys()).sort((a, b) => b - a)
-  const topMajors = sortedMajors.slice(0, 3)
-
+  const topMajors = Array.from(majorGroups.keys()).sort((a, b) => b - a).slice(0, 3)
   const releasesToKeep = new Set()
 
-  // Add all releases less than 1 month old (protected releases)
   parsedReleases.forEach(release => {
     if (!isOlderThanMonths(release.published_at, 1)) {
       releasesToKeep.add(release.tag_name)
     }
   })
 
-  // Process each major version
+  const keepCounts = [5, 3, 2]
   topMajors.forEach((major, index) => {
     const releases = majorGroups.get(major)
+    const releasesToKeepCount = keepCounts[index]
 
-    // Determine how many releases to keep based on position
-    let releasesToKeepCount
-    if (index === 0) {
-      releasesToKeepCount = 5 // Latest major: keep up to 5 releases
-    } else if (index === 1) {
-      releasesToKeepCount = 3 // Second major: keep up to 3 releases
-    } else {
-      releasesToKeepCount = 2 // Third major: keep up to 2 releases
-    }
-
-    // Releases are already sorted by version (descending within this major)
-    // For non-latest majors, also apply 6-month age filter
     const filteredReleases = index === 0
       ? releases.slice(0, releasesToKeepCount)
       : releases
@@ -140,7 +119,6 @@ function filterReleasesToKeep (releases) {
     })
   })
 
-  // Return releases in original order, filtered by what we want to keep
   return releases.filter(r => releasesToKeep.has(r.tag_name))
 }
 
