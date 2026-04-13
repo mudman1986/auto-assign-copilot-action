@@ -8,6 +8,8 @@ updates:
     open-pull-requests-limit: 10
     reviewers:
       - "mudman1986"
+    cooldown:
+      default-days: 7
     groups:
       # Group GitHub Actions packages together
       actions-packages:
@@ -31,6 +33,8 @@ updates:
     open-pull-requests-limit: 10
     reviewers:
       - "mudman1986"
+    cooldown:
+      default-days: 7
     groups:
       # Group all GitHub Actions updates together
       github-actions:
