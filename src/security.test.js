@@ -56,7 +56,6 @@ describe('Security Tests - Input Validation', () => {
         'label\tinjection',
         '../../../etc/passwd',
         '<script>alert(1)</script>',
-        // eslint-disable-next-line no-template-curly-in-string
         '${process.env.SECRET}'
       ]
 

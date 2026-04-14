@@ -17,3 +17,5 @@ jobs:
     with:
       validate-all-codebase: true
       default-branch: main
+      linter-rules-path: .github/linters
+      javascript-es-config-file: eslint.config.js
