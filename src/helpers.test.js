@@ -283,15 +283,23 @@ describe('Auto Assign Copilot Helpers', () => {
 
     test('should read template file when it exists', () => {
       const mockContent = 'Custom template content\n\nWith multiple lines'
+      const templatePath = '/test/workspace/.github/REFACTOR_ISSUE_TEMPLATE.md'
 
       // Mock file system methods using jest.spyOn
       jest.spyOn(fs, 'existsSync').mockReturnValue(true)
+      jest.spyOn(fs, 'realpathSync').mockImplementation((inputPath) => inputPath)
+      jest.spyOn(fs, 'lstatSync').mockReturnValue({
+        isSymbolicLink: () => false,
+        isFile: () => true,
+        size: 1024
+      })
       jest.spyOn(fs, 'readFileSync').mockReturnValue(mockContent)
 
       const result = helpers.readRefactorIssueTemplate('.github/REFACTOR_ISSUE_TEMPLATE.md')
       expect(result).toBe(mockContent)
-      expect(fs.existsSync).toHaveBeenCalled()
-      expect(fs.readFileSync).toHaveBeenCalled()
+      expect(fs.existsSync).toHaveBeenCalledWith(templatePath)
+      expect(fs.lstatSync).toHaveBeenCalledWith(templatePath)
+      expect(fs.readFileSync).toHaveBeenCalledWith(templatePath, 'utf8')
     })
 
     test('should return default content when template file does not exist', () => {
@@ -320,6 +328,12 @@ describe('Auto Assign Copilot Helpers', () => {
     test('should return default content when reading template fails', () => {
       // Mock file system methods to throw error using jest.spyOn
       jest.spyOn(fs, 'existsSync').mockReturnValue(true)
+      jest.spyOn(fs, 'realpathSync').mockImplementation((inputPath) => inputPath)
+      jest.spyOn(fs, 'lstatSync').mockReturnValue({
+        isSymbolicLink: () => false,
+        isFile: () => true,
+        size: 1024
+      })
       jest.spyOn(fs, 'readFileSync').mockImplementation(() => {
         throw new Error('File read error')
       })
@@ -334,7 +348,12 @@ describe('Auto Assign Copilot Helpers', () => {
       process.env.GITHUB_WORKSPACE = mockWorkspace
 
       jest.spyOn(fs, 'existsSync').mockReturnValue(true)
-      jest.spyOn(fs, 'statSync').mockReturnValue({ size: 1024 }) // Mock file size within limits
+      jest.spyOn(fs, 'realpathSync').mockImplementation((inputPath) => inputPath)
+      jest.spyOn(fs, 'lstatSync').mockReturnValue({
+        isSymbolicLink: () => false,
+        isFile: () => true,
+        size: 1024
+      })
       jest.spyOn(fs, 'readFileSync').mockReturnValue('test content')
 
       helpers.readRefactorIssueTemplate('.github/template.md')
@@ -342,7 +361,7 @@ describe('Auto Assign Copilot Helpers', () => {
       // Verify the path resolution
       const expectedPath = path.resolve(mockWorkspace, '.github/template.md')
       expect(fs.existsSync).toHaveBeenCalledWith(expectedPath)
-      expect(fs.statSync).toHaveBeenCalledWith(expectedPath)
+      expect(fs.lstatSync).toHaveBeenCalledWith(expectedPath)
       expect(fs.readFileSync).toHaveBeenCalledWith(expectedPath, 'utf8')
     })
 
@@ -355,6 +374,52 @@ describe('Auto Assign Copilot Helpers', () => {
 
       // Should return default content and not attempt to read the file
       expect(result).toContain('Review the codebase and identify opportunities')
+    })
+
+    test('should reject symlinks that resolve outside the workspace', () => {
+      const mockWorkspace = '/test/workspace'
+      const templatePath = path.resolve(mockWorkspace, '.github/template.md')
+      process.env.GITHUB_WORKSPACE = mockWorkspace
+
+      jest.spyOn(fs, 'existsSync').mockReturnValue(true)
+      jest.spyOn(fs, 'realpathSync').mockImplementation((inputPath) => {
+        if (inputPath === mockWorkspace) return mockWorkspace
+        if (inputPath === templatePath) return '/etc/passwd'
+        return inputPath
+      })
+      jest.spyOn(fs, 'lstatSync').mockReturnValue({
+        isSymbolicLink: () => true,
+        isFile: () => true,
+        size: 32
+      })
+      const readSpy = jest.spyOn(fs, 'readFileSync')
+
+      const result = helpers.readRefactorIssueTemplate('.github/template.md')
+
+      expect(result).toContain('Review the codebase and identify opportunities')
+      expect(fs.lstatSync).not.toHaveBeenCalled()
+      expect(readSpy).not.toHaveBeenCalled()
+    })
+
+    test('should reject symbolic link template files inside the workspace', () => {
+      const mockWorkspace = '/test/workspace'
+      const templatePath = path.resolve(mockWorkspace, '.github/template.md')
+      process.env.GITHUB_WORKSPACE = mockWorkspace
+
+      jest.spyOn(fs, 'existsSync').mockReturnValue(true)
+      jest.spyOn(fs, 'realpathSync').mockImplementation((inputPath) => inputPath)
+      jest.spyOn(fs, 'lstatSync').mockReturnValue({
+        isSymbolicLink: () => true,
+        isFile: () => true,
+        size: 32
+      })
+      const readSpy = jest.spyOn(fs, 'readFileSync')
+
+      const result = helpers.readRefactorIssueTemplate('.github/template.md')
+
+      expect(result).toContain('Review the codebase and identify opportunities')
+      expect(fs.lstatSync).toHaveBeenCalledWith(templatePath)
+      expect(readSpy).not.toHaveBeenCalled()
     })
   })
 

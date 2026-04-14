@@ -180,12 +180,28 @@ function hasRecentRefactorIssue (closedIssues, count = 4) {
  * @returns {string|null} - Absolute path if valid, null if invalid
  */
 function validateTemplatePath (templatePath, workspaceRoot) {
-  if (path.isAbsolute(templatePath) || templatePath.startsWith('\\\\')) {
+  if (!templatePath || typeof templatePath !== 'string') {
+    logger.info('Template path is empty or invalid, using default content')
+    return null
+  }
+
+  const trimmedPath = templatePath.trim()
+  if (!trimmedPath) {
+    logger.info('Template path is empty or invalid, using default content')
+    return null
+  }
+
+  if (trimmedPath.includes('\u0000')) {
+    logger.info('Template path contains null bytes, using default content')
+    return null
+  }
+
+  if (path.isAbsolute(trimmedPath) || trimmedPath.startsWith('\\\\')) {
     logger.info(`Template path ${templatePath} is absolute or UNC, using default content`)
     return null
   }
 
-  const absolutePath = path.resolve(workspaceRoot, templatePath)
+  const absolutePath = path.resolve(workspaceRoot, trimmedPath)
   const relativePath = path.relative(workspaceRoot, absolutePath)
 
   if (relativePath.startsWith('..') || path.isAbsolute(relativePath)) {
@@ -251,15 +267,34 @@ function readRefactorIssueTemplate (templatePath) {
       return defaultContent
     }
 
-    const stats = fs.statSync(absolutePath)
+    const workspaceRealPath = fs.realpathSync(workspaceRoot)
+    const templateRealPath = fs.realpathSync(absolutePath)
+    const relativeRealPath = path.relative(workspaceRealPath, templateRealPath)
+
+    if (relativeRealPath.startsWith('..') || path.isAbsolute(relativeRealPath)) {
+      logger.info(`Template path ${templatePath} resolves outside workspace, using default content`)
+      return defaultContent
+    }
+
+    const stats = fs.lstatSync(absolutePath)
+    if (stats.isSymbolicLink()) {
+      logger.info(`Template path ${templatePath} is a symbolic link, using default content`)
+      return defaultContent
+    }
+
+    if (!stats.isFile()) {
+      logger.info(`Template path ${templatePath} is not a regular file, using default content`)
+      return defaultContent
+    }
+
     const MAX_SIZE = 100 * 1024
     if (stats.size > MAX_SIZE) {
       logger.info(`Template file too large (${stats.size} bytes), using default content`)
       return defaultContent
     }
 
-    const content = fs.readFileSync(absolutePath, 'utf8')
-    logger.info(`Successfully loaded template from ${absolutePath}`)
+    const content = fs.readFileSync(templateRealPath, 'utf8')
+    logger.info(`Successfully loaded template from ${templateRealPath}`)
     return content
   } catch (error) {
     logger.info(`Error reading template file: ${error.message}, using default content`)

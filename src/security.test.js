@@ -177,9 +177,8 @@ describe('Security Tests - Path Traversal', () => {
 
       const result = helpers.readRefactorIssueTemplate('template.md')
 
-      // Should not follow symlinks outside workspace
-      // Current implementation might follow symlinks
-      expect(result).toBeDefined()
+      expect(result).toContain('Review the codebase')
+      expect(result).not.toContain('root:')
     } catch (e) {
       // Symlink creation might fail on some systems
       expect(e).toBeDefined()
