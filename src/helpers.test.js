@@ -391,7 +391,7 @@ describe('Auto Assign Copilot Helpers', () => {
         return inputPath
       })
       jest.spyOn(fs, 'lstatSync').mockReturnValue({
-        isSymbolicLink: () => true,
+        isSymbolicLink: () => false,
         isFile: () => true,
         size: 32
       })
