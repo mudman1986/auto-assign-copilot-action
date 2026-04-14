@@ -283,7 +283,10 @@ describe('Auto Assign Copilot Helpers', () => {
 
     test('should read template file when it exists', () => {
       const mockContent = 'Custom template content\n\nWith multiple lines'
-      const templatePath = '/test/workspace/.github/REFACTOR_ISSUE_TEMPLATE.md'
+      const templatePath = path.resolve(
+        process.env.GITHUB_WORKSPACE || process.cwd(),
+        '.github/REFACTOR_ISSUE_TEMPLATE.md'
+      )
 
       // Mock file system methods using jest.spyOn
       jest.spyOn(fs, 'existsSync').mockReturnValue(true)
