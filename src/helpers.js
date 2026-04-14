@@ -267,15 +267,6 @@ function readRefactorIssueTemplate (templatePath) {
       return defaultContent
     }
 
-    const workspaceRealPath = fs.realpathSync(workspaceRoot)
-    const templateRealPath = fs.realpathSync(absolutePath)
-    const relativeRealPath = path.relative(workspaceRealPath, templateRealPath)
-
-    if (relativeRealPath.startsWith('..') || path.isAbsolute(relativeRealPath)) {
-      logger.info(`Template path ${templatePath} resolves outside workspace, using default content`)
-      return defaultContent
-    }
-
     const stats = fs.lstatSync(absolutePath)
     if (stats.isSymbolicLink()) {
       logger.info(`Template path ${templatePath} is a symbolic link, using default content`)
@@ -287,14 +278,23 @@ function readRefactorIssueTemplate (templatePath) {
       return defaultContent
     }
 
+    const workspaceRealPath = fs.realpathSync(workspaceRoot)
+    const templateRealPath = fs.realpathSync(absolutePath)
+    const relativeRealPath = path.relative(workspaceRealPath, templateRealPath)
+
+    if (relativeRealPath.startsWith('..') || path.isAbsolute(relativeRealPath)) {
+      logger.info(`Template path ${templatePath} resolves outside workspace, using default content`)
+      return defaultContent
+    }
+
     const MAX_SIZE = 100 * 1024
     if (stats.size > MAX_SIZE) {
       logger.info(`Template file too large (${stats.size} bytes), using default content`)
       return defaultContent
     }
 
-    const content = fs.readFileSync(templateRealPath, 'utf8')
-    logger.info(`Successfully loaded template from ${templateRealPath}`)
+    const content = fs.readFileSync(absolutePath, 'utf8')
+    logger.info(`Successfully loaded template from ${absolutePath}`)
     return content
   } catch (error) {
     logger.info(`Error reading template file: ${error.message}, using default content`)

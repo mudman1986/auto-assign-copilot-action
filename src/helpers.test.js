@@ -379,7 +379,7 @@ describe('Auto Assign Copilot Helpers', () => {
       expect(result).toContain('Review the codebase and identify opportunities')
     })
 
-    test('should reject symlinks that resolve outside the workspace', () => {
+    test('should reject template paths that canonically resolve outside the workspace', () => {
       const mockWorkspace = '/test/workspace'
       const templatePath = path.resolve(mockWorkspace, '.github/template.md')
       process.env.GITHUB_WORKSPACE = mockWorkspace
@@ -400,7 +400,7 @@ describe('Auto Assign Copilot Helpers', () => {
       const result = helpers.readRefactorIssueTemplate('.github/template.md')
 
       expect(result).toContain('Review the codebase and identify opportunities')
-      expect(fs.lstatSync).not.toHaveBeenCalled()
+      expect(fs.lstatSync).toHaveBeenCalledWith(templatePath)
       expect(readSpy).not.toHaveBeenCalled()
     })
 
