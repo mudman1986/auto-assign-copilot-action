@@ -1682,7 +1682,7 @@ async function run () {
   try {
     [core, github] = await Promise.all([
       Promise.all(/* import() */[__nccwpck_require__.e(119), __nccwpck_require__.e(421)]).then(__nccwpck_require__.bind(__nccwpck_require__, 6421)),
-      Promise.all(/* import() */[__nccwpck_require__.e(119), __nccwpck_require__.e(157)]).then(__nccwpck_require__.bind(__nccwpck_require__, 157))
+      Promise.all(/* import() */[__nccwpck_require__.e(119), __nccwpck_require__.e(474), __nccwpck_require__.e(965)]).then(__nccwpck_require__.bind(__nccwpck_require__, 6474))
     ])
 
     // Get inputs from action.yml

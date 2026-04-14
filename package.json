@@ -4,7 +4,7 @@
 	"description": "GitHub Action to automatically assign Copilot to issues based on priority labels",
 	"main": "dist/index.js",
 	"scripts": {
-		"build": "ncc build src/index.js -o dist --license licenses.txt",
+		"build": "node -e \"require('fs').rmSync('dist', { recursive: true, force: true })\" && ncc build src/index.js -o dist --license licenses.txt",
 		"test": "jest",
 		"cleanup-releases": "node scripts/cleanup-releases.js"
 	},
@@ -31,7 +31,8 @@
 		"tar": "^7.5.4",
 		"glob": "^11.0.0",
 		"undici": "^6.24.1",
-		"test-exclude": "^7.0.1"
+		"test-exclude": "^7.0.1",
+		"json-with-bigint": "file:vendor/json-with-bigint"
 	},
 	"jest": {
 		"testEnvironment": "node",
