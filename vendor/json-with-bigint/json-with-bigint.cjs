@@ -10,10 +10,6 @@ const originalStringify = JSON.stringify;
 const originalParse = JSON.parse;
 const customFormat = /^-?\d+n$/;
 
-const bigIntsStringify = /([\[:])?"(-?\d+)n"($|([\\n]|\s)*(\s|[\\n])*[,\}\]])/g;
-const noiseStringify =
-  /([\[:])?("-?\d+n+)n("$|"([\\n]|\s)*(\s|[\\n])*[,\}\]])/g;
-
 /**
  * @typedef {(this: any, key: string | number | undefined, value: any) => any} Replacer
  * @typedef {(key: string | number | undefined, value: any, context?: { source: string }) => any} Reviver
@@ -72,13 +68,7 @@ const JSONStringify = (value, replacer, space) => {
     },
     space,
   );
-  const processedJSON = convertedToCustomJSON.replace(
-    bigIntsStringify,
-    "$1$2$3",
-  ); // Delete one "n" off the end of every BigInt value
-  const denoisedJSON = processedJSON.replace(noiseStringify, "$1$2$3"); // Remove one "n" off the end of every noisy string
-
-  return denoisedJSON;
+  return normalizeStringifiedJSON(convertedToCustomJSON);
 };
 
 const featureCache = new Map();
@@ -167,6 +157,79 @@ const MAX_INT = Number.MAX_SAFE_INTEGER.toString();
 const MAX_DIGITS = MAX_INT.length;
 const noiseValueWithQuotes = /^"-?\d+n+"$/; // Noise - strings that match the custom format before being converted to it
 const isDigit = (char) => char >= "0" && char <= "9";
+const isWhitespace = (char) =>
+  char === " " || char === "\n" || char === "\r" || char === "\t";
+
+const findPreviousNonWhitespace = (text, index) => {
+  for (let i = index; i >= 0; i--) {
+    if (!isWhitespace(text[i])) return text[i];
+  }
+
+  return null;
+};
+
+const findNextNonWhitespace = (text, index) => {
+  for (let i = index; i < text.length; i++) {
+    if (!isWhitespace(text[i])) return text[i];
+  }
+
+  return null;
+};
+
+const normalizeStringifiedJSON = (text) => {
+  let normalizedJSON = "";
+
+  for (let i = 0; i < text.length;) {
+    if (text[i] !== '"') {
+      normalizedJSON += text[i];
+      i++;
+      continue;
+    }
+
+    const start = i;
+    i++;
+
+    while (i < text.length) {
+      if (text[i] === "\\") {
+        i += 2;
+        continue;
+      }
+
+      if (text[i] === '"') {
+        i++;
+        break;
+      }
+
+      i++;
+    }
+
+    const stringToken = text.slice(start, i);
+    const tokenValue = stringToken.slice(1, -1);
+    const previousChar = findPreviousNonWhitespace(text, start - 1);
+    const nextChar = findNextNonWhitespace(text, i);
+    const isObjectKey = nextChar === ":";
+    const canBeValue =
+      previousChar === null || previousChar === ":" || previousChar === "[" || previousChar === ",";
+    const endsValue =
+      nextChar === null || nextChar === "," || nextChar === "]" || nextChar === "}";
+
+    if (!isObjectKey && canBeValue && endsValue) {
+      if (customFormat.test(tokenValue)) {
+        normalizedJSON += tokenValue.slice(0, -1);
+        continue;
+      }
+
+      if (noiseValue.test(tokenValue)) {
+        normalizedJSON += '"' + tokenValue.slice(0, -1) + '"';
+        continue;
+      }
+    }
+
+    normalizedJSON += stringToken;
+  }
+
+  return normalizedJSON;
+};
 
 const markLargeNumbers = (text) => {
   let serializedData = "";

@@ -1,5 +1,3 @@
-#!/usr/bin/env node
-
 describe('vendored json-with-bigint patch', () => {
   const originalParse = JSON.parse
 
@@ -28,5 +26,17 @@ describe('vendored json-with-bigint patch', () => {
 
     expect(parsed.string).toBe('9007199254740993n')
     expect(parsed.escaped).toBe('quote "value"')
+  })
+
+  test('stringifies bigint values without regex-based post-processing', () => {
+    const { JSONStringify } = require('../vendor/json-with-bigint/json-with-bigint.cjs')
+
+    const stringified = JSONStringify({
+      big: 9007199254740993n,
+      noise: '9007199254740993n'
+    }, null, 2)
+
+    expect(stringified).toContain('"noise": "9007199254740993n"')
+    expect(stringified).toContain('"big": 9007199254740993')
   })
 })
