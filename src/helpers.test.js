@@ -349,12 +349,13 @@ describe('Auto Assign Copilot Helpers', () => {
 
     test('should block template paths that resolve outside workspace via symlink', () => {
       const mockWorkspace = '/test/workspace'
+      const expectedTemplatePath = path.join(mockWorkspace, '.github/template.md')
       process.env.GITHUB_WORKSPACE = mockWorkspace
 
       jest.spyOn(fs, 'existsSync').mockReturnValue(true)
       jest.spyOn(fs, 'realpathSync').mockImplementation((targetPath) => {
         if (targetPath === mockWorkspace) return mockWorkspace
-        if (targetPath.endsWith('template.md')) return '/etc/passwd'
+        if (targetPath === expectedTemplatePath) return '/etc/passwd'
         return targetPath
       })
       const statSpy = jest.spyOn(fs, 'statSync')
