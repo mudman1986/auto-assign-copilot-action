@@ -210,7 +210,16 @@ function validateTemplatePath (templatePath, workspaceRoot) {
  * @returns {boolean} - True when candidate is inside root
  */
 function isPathWithinRoot (candidatePath, rootPath) {
-  const relativePath = path.relative(rootPath, candidatePath)
+  const normalizedCandidatePath = path.normalize(candidatePath)
+  const normalizedRootPath = path.normalize(rootPath)
+  const isWindows = process.platform === 'win32'
+  const candidateForComparison = isWindows
+    ? normalizedCandidatePath.toLowerCase()
+    : normalizedCandidatePath
+  const rootForComparison = isWindows
+    ? normalizedRootPath.toLowerCase()
+    : normalizedRootPath
+  const relativePath = path.relative(rootForComparison, candidateForComparison)
   return !relativePath.startsWith('..') && !path.isAbsolute(relativePath)
 }
 
