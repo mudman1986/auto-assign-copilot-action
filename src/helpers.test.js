@@ -368,6 +368,22 @@ describe('Auto Assign Copilot Helpers', () => {
       expect(readSpy).not.toHaveBeenCalled()
     })
 
+    test('should return default content when resolving real path fails', () => {
+      const mockWorkspace = '/test/workspace'
+      process.env.GITHUB_WORKSPACE = mockWorkspace
+
+      jest.spyOn(fs, 'existsSync').mockReturnValue(true)
+      jest.spyOn(fs, 'realpathSync').mockImplementation(() => {
+        throw new Error('ENOENT: broken symlink')
+      })
+      const readSpy = jest.spyOn(fs, 'readFileSync')
+
+      const result = helpers.readRefactorIssueTemplate('.github/template.md')
+
+      expect(result).toContain('Review the codebase and identify opportunities')
+      expect(readSpy).not.toHaveBeenCalled()
+    })
+
     test('should prevent directory traversal attacks', () => {
       const mockWorkspace = '/test/workspace'
       process.env.GITHUB_WORKSPACE = mockWorkspace
