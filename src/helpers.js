@@ -262,8 +262,15 @@ function readRefactorIssueTemplate (templatePath) {
       return defaultContent
     }
 
-    const realWorkspaceRoot = fs.realpathSync(workspaceRoot)
-    const realTemplatePath = fs.realpathSync(absolutePath)
+    let realWorkspaceRoot
+    let realTemplatePath
+    try {
+      realWorkspaceRoot = fs.realpathSync(workspaceRoot)
+      realTemplatePath = fs.realpathSync(absolutePath)
+    } catch (error) {
+      logger.info(`Failed to resolve template real path: ${error.message}, using default content`)
+      return defaultContent
+    }
     if (!isPathWithinRoot(realTemplatePath, realWorkspaceRoot)) {
       logger.info(`Template path ${templatePath} resolves outside workspace, using default content`)
       return defaultContent

@@ -354,7 +354,8 @@ describe('Auto Assign Copilot Helpers', () => {
       jest.spyOn(fs, 'existsSync').mockReturnValue(true)
       jest.spyOn(fs, 'realpathSync').mockImplementation((targetPath) => {
         if (targetPath === mockWorkspace) return mockWorkspace
-        return '/etc/passwd'
+        if (targetPath.endsWith('template.md')) return '/etc/passwd'
+        return targetPath
       })
       const statSpy = jest.spyOn(fs, 'statSync')
       const readSpy = jest.spyOn(fs, 'readFileSync')
