@@ -334,6 +334,7 @@ describe('Auto Assign Copilot Helpers', () => {
       process.env.GITHUB_WORKSPACE = mockWorkspace
 
       jest.spyOn(fs, 'existsSync').mockReturnValue(true)
+      jest.spyOn(fs, 'realpathSync').mockImplementation((targetPath) => targetPath)
       jest.spyOn(fs, 'statSync').mockReturnValue({ size: 1024 }) // Mock file size within limits
       jest.spyOn(fs, 'readFileSync').mockReturnValue('test content')
 
@@ -344,6 +345,25 @@ describe('Auto Assign Copilot Helpers', () => {
       expect(fs.existsSync).toHaveBeenCalledWith(expectedPath)
       expect(fs.statSync).toHaveBeenCalledWith(expectedPath)
       expect(fs.readFileSync).toHaveBeenCalledWith(expectedPath, 'utf8')
+    })
+
+    test('should block template paths that resolve outside workspace via symlink', () => {
+      const mockWorkspace = '/test/workspace'
+      process.env.GITHUB_WORKSPACE = mockWorkspace
+
+      jest.spyOn(fs, 'existsSync').mockReturnValue(true)
+      jest.spyOn(fs, 'realpathSync').mockImplementation((targetPath) => {
+        if (targetPath === mockWorkspace) return mockWorkspace
+        return '/etc/passwd'
+      })
+      const statSpy = jest.spyOn(fs, 'statSync')
+      const readSpy = jest.spyOn(fs, 'readFileSync')
+
+      const result = helpers.readRefactorIssueTemplate('.github/template.md')
+
+      expect(result).toContain('Review the codebase and identify opportunities')
+      expect(statSpy).not.toHaveBeenCalled()
+      expect(readSpy).not.toHaveBeenCalled()
     })
 
     test('should prevent directory traversal attacks', () => {

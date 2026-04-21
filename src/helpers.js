@@ -204,6 +204,17 @@ function validateTemplatePath (templatePath, workspaceRoot) {
 }
 
 /**
+ * Check if a candidate path is within a root directory
+ * @param {string} candidatePath - Candidate absolute path
+ * @param {string} rootPath - Root absolute path
+ * @returns {boolean} - True when candidate is inside root
+ */
+function isPathWithinRoot (candidatePath, rootPath) {
+  const relativePath = path.relative(rootPath, candidatePath)
+  return !relativePath.startsWith('..') && !path.isAbsolute(relativePath)
+}
+
+/**
  * Read the content of the refactor issue template file
  * Enhanced with additional security validations (V03: Path Traversal Protection)
  * @param {string} templatePath - Path to the template file (relative to workspace root)
@@ -251,15 +262,22 @@ function readRefactorIssueTemplate (templatePath) {
       return defaultContent
     }
 
-    const stats = fs.statSync(absolutePath)
+    const realWorkspaceRoot = fs.realpathSync(workspaceRoot)
+    const realTemplatePath = fs.realpathSync(absolutePath)
+    if (!isPathWithinRoot(realTemplatePath, realWorkspaceRoot)) {
+      logger.info(`Template path ${templatePath} resolves outside workspace, using default content`)
+      return defaultContent
+    }
+
+    const stats = fs.statSync(realTemplatePath)
     const MAX_SIZE = 100 * 1024
     if (stats.size > MAX_SIZE) {
       logger.info(`Template file too large (${stats.size} bytes), using default content`)
       return defaultContent
     }
 
-    const content = fs.readFileSync(absolutePath, 'utf8')
-    logger.info(`Successfully loaded template from ${absolutePath}`)
+    const content = fs.readFileSync(realTemplatePath, 'utf8')
+    logger.info(`Successfully loaded template from ${realTemplatePath}`)
     return content
   } catch (error) {
     logger.info(`Error reading template file: ${error.message}, using default content`)
