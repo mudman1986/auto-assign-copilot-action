@@ -450,7 +450,7 @@ The action implements strict security controls for file access:
 
 ### Prerequisites
 
-- Node.js 22+ (for development)
+- Node.js 24+ (for development)
 - npm 10+
 
 ### Build
