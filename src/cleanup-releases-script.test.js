@@ -55,4 +55,20 @@ describe('cleanup releases script', () => {
     expect(warn).not.toHaveBeenCalled()
     expect(exit).not.toHaveBeenCalled()
   })
+
+  test('returns a failure code when loading the GitHub client fails', async () => {
+    const { cleanupReleases } = require(scriptPath)
+    const error = jest.fn()
+
+    await expect(cleanupReleases({
+      env: {
+        GITHUB_TOKEN: 'token',
+        GITHUB_REPOSITORY: 'mudman1986/auto-assign-copilot-action'
+      },
+      importModule: jest.fn().mockRejectedValue(new Error('boom')),
+      error
+    })).resolves.toBe(1)
+
+    expect(error).toHaveBeenCalledWith('Error during cleanup:', 'boom')
+  })
 })

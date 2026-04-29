@@ -5,7 +5,6 @@
  * Uses the release-cleanup module to determine which releases to delete
  */
 
-const { getOctokit } = require('@actions/github')
 const { filterReleasesToKeep } = require('../src/release-cleanup')
 
 /**
@@ -18,81 +17,109 @@ function getReleaseDays (publishedAt) {
 }
 
 /**
- * Main function to cleanup releases
+ * Load getOctokit in a way that works with ESM-only package exports
+ * @param {Function} importModule - Import function to use
+ * @returns {Promise<Function>} - getOctokit function
  */
-async function cleanupReleases () {
-  const token = process.env.GITHUB_TOKEN
-  const dryRun = process.env.DRY_RUN === 'true'
-  const [owner, repo] = (process.env.GITHUB_REPOSITORY || '').split('/')
+async function loadGetOctokit (importModule = async (specifier) => import(specifier)) {
+  const githubModule = await importModule('@actions/github')
+
+  if (typeof githubModule?.getOctokit === 'function') {
+    return githubModule.getOctokit
+  }
+
+  if (typeof githubModule?.default?.getOctokit === 'function') {
+    return githubModule.default.getOctokit
+  }
+
+  throw new Error('Unable to load getOctokit from @actions/github')
+}
+
+/**
+ * Main function to cleanup releases
+ * @param {Object} options - Cleanup options
+ * @returns {Promise<number>} - Process exit code
+ */
+async function cleanupReleases ({
+  env = process.env,
+  importModule,
+  log = console.log,
+  error = console.error,
+  warn = console.warn
+} = {}) {
+  const token = env.GITHUB_TOKEN
+  const dryRun = env.DRY_RUN === 'true'
+  const [owner, repo] = (env.GITHUB_REPOSITORY || '').split('/')
 
   if (!token) {
-    console.error('Error: GITHUB_TOKEN environment variable is required')
-    process.exit(1)
+    error('Error: GITHUB_TOKEN environment variable is required')
+    return 1
   }
 
   if (!owner || !repo) {
-    console.error('Error: GITHUB_REPOSITORY environment variable is required (format: owner/repo)')
-    process.exit(1)
+    error('Error: GITHUB_REPOSITORY environment variable is required (format: owner/repo)')
+    return 1
   }
 
-  console.log(`Repository: ${owner}/${repo}`)
-  console.log(`Dry run: ${dryRun}`)
-  console.log('')
-
-  const octokit = getOctokit(token)
+  log(`Repository: ${owner}/${repo}`)
+  log(`Dry run: ${dryRun}`)
+  log('')
 
   try {
+    const getOctokit = await loadGetOctokit(importModule)
+    const octokit = getOctokit(token)
+
     // Fetch all releases
-    console.log('Fetching releases...')
+    log('Fetching releases...')
     const { data: releases } = await octokit.rest.repos.listReleases({
       owner,
       repo,
       per_page: 100
     })
 
-    console.log(`Found ${releases.length} releases`)
+    log(`Found ${releases.length} releases`)
 
     if (releases.length === 0) {
-      console.log('No releases found. Nothing to cleanup.')
-      return
+      log('No releases found. Nothing to cleanup.')
+      return 0
     }
 
     // Determine which releases to keep
     const releasesToKeep = filterReleasesToKeep(releases)
     const tagsToKeep = new Set(releasesToKeep.map(r => r.tag_name))
 
-    console.log(`\nReleases to keep (${releasesToKeep.length}):`)
+    log(`\nReleases to keep (${releasesToKeep.length}):`)
     releasesToKeep
       .sort((a, b) => b.tag_name.localeCompare(a.tag_name))
       .forEach(r => {
         const age = getReleaseDays(r.published_at)
-        console.log(`  - ${r.tag_name} (published ${age} days ago)`)
+        log(`  - ${r.tag_name} (published ${age} days ago)`)
       })
 
     // Identify releases to delete
     const releasesToDelete = releases.filter(r => !tagsToKeep.has(r.tag_name))
 
     if (releasesToDelete.length === 0) {
-      console.log('\nNo releases to delete.')
-      return
+      log('\nNo releases to delete.')
+      return 0
     }
 
-    console.log(`\nReleases to delete (${releasesToDelete.length}):`)
+    log(`\nReleases to delete (${releasesToDelete.length}):`)
     releasesToDelete
       .sort((a, b) => b.tag_name.localeCompare(a.tag_name))
       .forEach(r => {
         const age = getReleaseDays(r.published_at)
-        console.log(`  - ${r.tag_name} (published ${age} days ago)`)
+        log(`  - ${r.tag_name} (published ${age} days ago)`)
       })
 
     if (dryRun) {
-      console.log('\nDry run mode - no releases will be deleted.')
-      console.log(`Would delete ${releasesToDelete.length} release(s)`)
-      return
+      log('\nDry run mode - no releases will be deleted.')
+      log(`Would delete ${releasesToDelete.length} release(s)`)
+      return 0
     }
 
     // Delete releases
-    console.log('\nDeleting releases...')
+    log('\nDeleting releases...')
     for (const release of releasesToDelete) {
       try {
         await octokit.rest.repos.deleteRelease({
@@ -100,7 +127,7 @@ async function cleanupReleases () {
           repo,
           release_id: release.id
         })
-        console.log(`  ✓ Deleted release: ${release.tag_name}`)
+        log(`  ✓ Deleted release: ${release.tag_name}`)
 
         // Also delete the associated tag
         try {
@@ -109,21 +136,38 @@ async function cleanupReleases () {
             repo,
             ref: `tags/${release.tag_name}`
           })
-          console.log(`  ✓ Deleted tag: ${release.tag_name}`)
+          log(`  ✓ Deleted tag: ${release.tag_name}`)
         } catch (tagError) {
-          console.warn(`  ⚠ Failed to delete tag ${release.tag_name}: ${tagError.message}`)
+          warn(`  ⚠ Failed to delete tag ${release.tag_name}: ${tagError.message}`)
         }
-      } catch (error) {
-        console.error(`  ✗ Failed to delete release ${release.tag_name}: ${error.message}`)
+      } catch (releaseError) {
+        warn(`  ✗ Failed to delete release ${release.tag_name}: ${releaseError.message}`)
       }
     }
 
-    console.log(`\n✓ Cleanup complete. Deleted ${releasesToDelete.length} release(s).`)
-  } catch (error) {
-    console.error('Error during cleanup:', error.message)
-    process.exit(1)
+    log(`\n✓ Cleanup complete. Deleted ${releasesToDelete.length} release(s).`)
+    return 0
+  } catch (caughtError) {
+    error('Error during cleanup:', caughtError.message)
+    return 1
   }
 }
 
-// Run the cleanup
-cleanupReleases()
+if (require.main === module) {
+  cleanupReleases()
+    .then((exitCode) => {
+      if (exitCode !== 0) {
+        process.exit(exitCode)
+      }
+    })
+    .catch((error) => {
+      console.error('Error during cleanup:', error.message)
+      process.exit(1)
+    })
+}
+
+module.exports = {
+  getReleaseDays,
+  loadGetOctokit,
+  cleanupReleases
+}
