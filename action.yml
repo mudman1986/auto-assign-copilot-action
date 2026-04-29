@@ -67,6 +67,6 @@ outputs:
     description: "The effective mode used for assignment (auto or refactor)"
 
 runs:
-  using: "node20"
+  using: "node24"
 
   main: "dist/index.js"
