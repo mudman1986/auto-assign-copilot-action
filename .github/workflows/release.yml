@@ -72,7 +72,7 @@ jobs:
             const owner = context.repo.owner
             const repo = context.repo.repo
             const manualReleaseType = (process.env.INPUT_RELEASE_TYPE || '').trim()
-            const latestTag = execSync("git tag --list 'v*' --sort=-v:refname | head -1", { encoding: 'utf8' }).trim()
+            const latestTag = execSync("git tag --list 'v*.*.*' --sort=-v:refname | head -1", { encoding: 'utf8' }).trim()
             const currentVersion = (latestTag || 'v0.0.0').replace(/^v/i, '')
 
             let releaseType = manualReleaseType || 'patch'
