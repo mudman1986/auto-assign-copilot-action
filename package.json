@@ -1,68 +1,68 @@
 {
-	"name": "auto-assign-copilot-action",
-	"version": "1.1.1",
-	"description": "GitHub Action to automatically assign Copilot to issues based on priority labels",
-	"main": "dist/index.js",
-	"scripts": {
-		"build": "ncc build src/index.js -o dist --license licenses.txt",
-		"test": "jest",
-		"cleanup-releases": "node scripts/cleanup-releases.js"
-	},
-	"keywords": [
-		"github",
-		"actions",
-		"copilot",
-		"automation",
-		"issues"
-	],
-	"author": "mudman1986",
-	"license": "MIT",
-	"dependencies": {
-		"@actions/core": "^3.0.0",
-		"@actions/github": "^9.1.0"
-	},
- 	"devDependencies": {
- 		"@vercel/ncc": "^0.38.3",
-		"jest": "^30.3.0"
- 	},
-	"overrides": {
-		"tar": "^7.5.4",
-		"glob": "^11.0.0",
-		"undici": "^6.24.1",
-		"test-exclude": "^7.0.1"
-	},
-	"jest": {
-		"testEnvironment": "node",
-		"testMatch": [
-			"**/src/**/*.test.js"
-		],
-		"collectCoverageFrom": [
-			"src/**/*.js",
-			"!src/**/*.test.js",
-			"!src/index.js"
-		],
-		"coverageThreshold": {
-			"global": {
-				"branches": 80,
-				"functions": 75,
-				"lines": 85,
-				"statements": 85
-			}
-		},
-		"setupFilesAfterEnv": [
-			"<rootDir>/jest.setup.js"
-		],
-		"silent": true,
-		"verbose": false
-	},
-	"standard": {
-		"env": [
-			"jest"
-		],
-		"ignore": [
-			"dist/**",
-			"node_modules/**",
-			"coverage/**"
-		]
-	}
+  "name": "auto-assign-copilot-action",
+  "version": "1.1.1",
+  "description": "GitHub Action to automatically assign Copilot to issues based on priority labels",
+  "main": "dist/index.js",
+  "scripts": {
+    "build": "ncc build src/index.js -o dist --license licenses.txt",
+    "test": "jest",
+    "cleanup-releases": "node scripts/cleanup-releases.js"
+  },
+  "keywords": [
+    "github",
+    "actions",
+    "copilot",
+    "automation",
+    "issues"
+  ],
+  "author": "mudman1986",
+  "license": "MIT",
+  "dependencies": {
+    "@actions/core": "^3.0.0",
+    "@actions/github": "^9.1.0"
+  },
+  "devDependencies": {
+    "@vercel/ncc": "^0.38.3",
+    "jest": "^30.3.0"
+  },
+  "overrides": {
+    "tar": "^7.5.4",
+    "glob": "^11.0.0",
+    "undici": "^6.24.1",
+    "test-exclude": "^7.0.1"
+  },
+  "jest": {
+    "testEnvironment": "node",
+    "testMatch": [
+      "**/src/**/*.test.js"
+    ],
+    "collectCoverageFrom": [
+      "src/**/*.js",
+      "!src/**/*.test.js",
+      "!src/index.js"
+    ],
+    "coverageThreshold": {
+      "global": {
+        "branches": 80,
+        "functions": 75,
+        "lines": 85,
+        "statements": 85
+      }
+    },
+    "setupFilesAfterEnv": [
+      "<rootDir>/jest.setup.js"
+    ],
+    "silent": true,
+    "verbose": false
+  },
+  "standard": {
+    "env": [
+      "jest"
+    ],
+    "ignore": [
+      "dist/**",
+      "node_modules/**",
+      "coverage/**"
+    ]
+  }
 }

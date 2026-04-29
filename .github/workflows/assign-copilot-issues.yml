@@ -3,7 +3,7 @@ name: auto assign copilot
 on:
   # Daily schedule to ensure Copilot always has work
   schedule:
-    - cron: "0 10 * * *" # Daily at 10 AM UTC
+    - cron: "0 10 * * *"  # Daily at 10 AM UTC
 
   # Trigger when an issue is closed (with delay for grace period)
   issues:
@@ -77,5 +77,5 @@ jobs:
           allow-parent-issues: ${{ inputs.allow_parent_issues || 'false' }}
           skip-labels: ${{ inputs.skip_labels || 'no-ai,refining' }}
           refactor-threshold: ${{ inputs.refactor_threshold || '4' }}
-          wait-seconds: '300' # 5 minutes grace period for issue events
+          wait-seconds: '300'  # 5 minutes grace period for issue events
           refactor-issue-template: .github/REFACTOR_ISSUE_TEMPLATE.md
