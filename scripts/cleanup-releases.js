@@ -161,7 +161,7 @@ if (require.main === module) {
       }
     })
     .catch((error) => {
-      console.error('Error during cleanup:', error.message)
+      console.error(error)
       process.exit(1)
     })
 }

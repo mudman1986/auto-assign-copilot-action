@@ -28,7 +28,6 @@ describe('cleanup releases script', () => {
     const log = jest.fn()
     const error = jest.fn()
     const warn = jest.fn()
-    const exit = jest.fn()
 
     await cleanupReleases({
       env: {
@@ -39,8 +38,7 @@ describe('cleanup releases script', () => {
       importModule,
       log,
       error,
-      warn,
-      exit
+      warn
     })
 
     expect(importModule).toHaveBeenCalledWith('@actions/github')
@@ -53,7 +51,6 @@ describe('cleanup releases script', () => {
     expect(log).toHaveBeenCalledWith('No releases found. Nothing to cleanup.')
     expect(error).not.toHaveBeenCalled()
     expect(warn).not.toHaveBeenCalled()
-    expect(exit).not.toHaveBeenCalled()
   })
 
   test('returns a failure code when loading the GitHub client fails', async () => {
