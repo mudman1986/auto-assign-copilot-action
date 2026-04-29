@@ -210,6 +210,26 @@ function validateTemplatePath (templatePath, workspaceRoot) {
 }
 
 /**
+ * Check if a candidate path is within a root directory
+ * @param {string} candidatePath - Candidate absolute path
+ * @param {string} rootPath - Root absolute path
+ * @returns {boolean} - True when candidate is inside root
+ */
+function isPathWithinRoot (candidatePath, rootPath) {
+  const normalizedCandidatePath = path.normalize(candidatePath)
+  const normalizedRootPath = path.normalize(rootPath)
+  const isWindows = process.platform === 'win32'
+  const candidateForComparison = isWindows
+    ? normalizedCandidatePath.toLowerCase()
+    : normalizedCandidatePath
+  const rootForComparison = isWindows
+    ? normalizedRootPath.toLowerCase()
+    : normalizedRootPath
+  const relativePath = path.relative(rootForComparison, candidateForComparison)
+  return !relativePath.startsWith('..') && !path.isAbsolute(relativePath)
+}
+
+/**
  * Read the content of the refactor issue template file
  * Enhanced with additional security validations (V03: Path Traversal Protection)
  * @param {string} templatePath - Path to the template file (relative to workspace root)
@@ -257,15 +277,41 @@ function readRefactorIssueTemplate (templatePath) {
       return defaultContent
     }
 
-    const stats = fs.statSync(absolutePath)
+    let realWorkspaceRoot
+    let realTemplatePath
+    try {
+      realWorkspaceRoot = fs.realpathSync(workspaceRoot)
+      realTemplatePath = fs.realpathSync(absolutePath)
+    } catch (error) {
+      logger.info(`Failed to resolve template real path: ${error.message}, using default content`)
+      return defaultContent
+    }
+    if (!isPathWithinRoot(realTemplatePath, realWorkspaceRoot)) {
+      logger.info(`Template path ${templatePath} resolves outside workspace, using default content`)
+      return defaultContent
+    }
+
+    const allowedExtensions = ['.md', '.txt']
+    const resolvedExt = path.extname(realTemplatePath).toLowerCase()
+    if (!allowedExtensions.includes(resolvedExt)) {
+      logger.info(`Resolved template file extension ${resolvedExt} not allowed, using default content`)
+      return defaultContent
+    }
+
+    const stats = fs.statSync(realTemplatePath)
+    if (!stats.isFile()) {
+      logger.info(`Template path ${realTemplatePath} is not a regular file, using default content`)
+      return defaultContent
+    }
+
     const MAX_SIZE = 100 * 1024
     if (stats.size > MAX_SIZE) {
       logger.info(`Template file too large (${stats.size} bytes), using default content`)
       return defaultContent
     }
 
-    const content = fs.readFileSync(absolutePath, 'utf8')
-    logger.info(`Successfully loaded template from ${absolutePath}`)
+    const content = fs.readFileSync(realTemplatePath, 'utf8')
+    logger.info(`Successfully loaded template from ${realTemplatePath}`)
     return content
   } catch (error) {
     logger.info(`Error reading template file: ${error.message}, using default content`)
