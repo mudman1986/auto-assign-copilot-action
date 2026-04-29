@@ -291,7 +291,19 @@ function readRefactorIssueTemplate (templatePath) {
       return defaultContent
     }
 
+    const allowedExtensions = ['.md', '.txt']
+    const resolvedExt = path.extname(realTemplatePath).toLowerCase()
+    if (!allowedExtensions.includes(resolvedExt)) {
+      logger.info(`Resolved template file extension ${resolvedExt} not allowed, using default content`)
+      return defaultContent
+    }
+
     const stats = fs.statSync(realTemplatePath)
+    if (!stats.isFile()) {
+      logger.info(`Template path ${realTemplatePath} is not a regular file, using default content`)
+      return defaultContent
+    }
+
     const MAX_SIZE = 100 * 1024
     if (stats.size > MAX_SIZE) {
       logger.info(`Template file too large (${stats.size} bytes), using default content`)
