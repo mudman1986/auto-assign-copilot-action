@@ -21,7 +21,7 @@ function getReleaseDays (publishedAt) {
  * @param {Function} importModule - Import function to use
  * @returns {Promise<Function>} - getOctokit function
  */
-async function loadGetOctokit (importModule = async (specifier) => import(specifier)) {
+async function loadGetOctokit (importModule = async (moduleName) => import(moduleName)) {
   const githubModule = await importModule('@actions/github')
 
   if (typeof githubModule?.getOctokit === 'function') {
@@ -161,7 +161,7 @@ if (require.main === module) {
       }
     })
     .catch((error) => {
-      console.error(error)
+      console.error('Failed to complete cleanup:', error)
       process.exit(1)
     })
 }
