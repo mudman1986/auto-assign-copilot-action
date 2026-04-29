@@ -1,6 +1,6 @@
 # Release Process
 
-This repository now uses a dedicated GitHub Actions release workflow instead of commit-message parsing.
+This repository uses a dedicated GitHub Actions release workflow instead of commit-message parsing.
 
 ## Overview
 
