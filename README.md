@@ -441,7 +441,7 @@ The action implements strict security controls for file access:
 ### Dependency Security
 
 - Production dependencies: **0 vulnerabilities**
-- Dev dependencies: Minimal vulnerabilities (semantic-release internal npm)
+- Dev dependencies: Audited regularly and updated through Dependabot
 - Automated security updates via Dependabot
 
 ---
@@ -522,6 +522,12 @@ MIT © [mudman1986](https://github.com/mudman1986)
 - [Security Policy](SECURITY.md)
 
 ### Release Retention Policy
+
+Version bumps are controlled by PR labels in the `release` workflow:
+- `release:major`
+- `release:minor`
+- `release:patch`
+- No label defaults to a patch release
 
 Old releases are automatically cleaned up to maintain a manageable release history:
 - Latest major: Keep 5 releases
