@@ -65,4 +65,4 @@ The workflow also updates the matching moving major tag so users can pin to `@v2
 
 ### Release was already published
 
-The workflow is safe to re-run. If the target tag already exists, it exits without creating a duplicate release.
+The workflow is safe to re-run. If a release for the target tag already exists, it exits without creating a duplicate release.
