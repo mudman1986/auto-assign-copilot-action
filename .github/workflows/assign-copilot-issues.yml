@@ -5,8 +5,11 @@ on:
   schedule:
     - cron: "0 10 * * *"  # Daily at 10 AM UTC
 
-  # Trigger when an issue is closed (with delay for grace period)
+  # Trigger when an issue (with delay for grace period) or pr is closed 
   issues:
+    types: [closed]
+
+  pull_request:
     types: [closed]
 
   # Manual trigger with options
