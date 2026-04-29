@@ -1,4 +1,11 @@
-const { determineReleaseType, bumpVersion, getNextReleaseVersion } = require('./release')
+const {
+  determineReleaseType,
+  bumpVersion,
+  getNextReleaseVersion,
+  isMissingGitRefError,
+  isExistingGitRefError,
+  syncTagRef
+} = require('./release')
 
 describe('Release helpers', () => {
   describe('determineReleaseType', () => {
@@ -59,6 +66,138 @@ describe('Release helpers', () => {
       expect(getNextReleaseVersion('2.0.4', [{ name: 'release:minor' }])).toEqual({
         releaseType: 'minor',
         version: '2.1.0'
+      })
+    })
+  })
+
+  describe('git ref helpers', () => {
+    test('detects missing refs from GitHub API errors', () => {
+      expect(isMissingGitRefError({ status: 404, message: 'Not Found' })).toBe(true)
+      expect(isMissingGitRefError({ status: 422, message: 'Reference does not exist' })).toBe(true)
+      expect(isMissingGitRefError({ status: 422, message: 'Validation Failed' })).toBe(false)
+    })
+
+    test('detects existing refs from GitHub API errors', () => {
+      expect(isExistingGitRefError({ status: 422, message: 'Reference already exists' })).toBe(true)
+      expect(isExistingGitRefError({ status: 404, message: 'Not Found' })).toBe(false)
+    })
+  })
+
+  describe('syncTagRef', () => {
+    test('updates an existing ref', async () => {
+      const github = {
+        rest: {
+          git: {
+            getRef: jest.fn().mockResolvedValue({}),
+            updateRef: jest.fn().mockResolvedValue({}),
+            createRef: jest.fn()
+          }
+        }
+      }
+
+      await expect(syncTagRef({
+        github,
+        owner: 'mudman1986',
+        repo: 'auto-assign-copilot-action',
+        tag: 'v2',
+        sha: 'abc123'
+      })).resolves.toBe('updated')
+
+      expect(github.rest.git.getRef).toHaveBeenCalledWith({
+        owner: 'mudman1986',
+        repo: 'auto-assign-copilot-action',
+        ref: 'tags/v2'
+      })
+      expect(github.rest.git.updateRef).toHaveBeenCalledWith({
+        owner: 'mudman1986',
+        repo: 'auto-assign-copilot-action',
+        ref: 'tags/v2',
+        sha: 'abc123',
+        force: true
+      })
+      expect(github.rest.git.createRef).not.toHaveBeenCalled()
+    })
+
+    test('creates a missing ref', async () => {
+      const github = {
+        rest: {
+          git: {
+            getRef: jest.fn().mockRejectedValue({ status: 404, message: 'Not Found' }),
+            updateRef: jest.fn(),
+            createRef: jest.fn().mockResolvedValue({})
+          }
+        }
+      }
+
+      await expect(syncTagRef({
+        github,
+        owner: 'mudman1986',
+        repo: 'auto-assign-copilot-action',
+        tag: 'v2',
+        sha: 'abc123'
+      })).resolves.toBe('created')
+
+      expect(github.rest.git.updateRef).not.toHaveBeenCalled()
+      expect(github.rest.git.createRef).toHaveBeenCalledWith({
+        owner: 'mudman1986',
+        repo: 'auto-assign-copilot-action',
+        ref: 'refs/tags/v2',
+        sha: 'abc123'
+      })
+    })
+
+    test('creates the ref when update reports it missing', async () => {
+      const github = {
+        rest: {
+          git: {
+            getRef: jest.fn().mockResolvedValue({}),
+            updateRef: jest.fn().mockRejectedValue({ status: 422, message: 'Reference does not exist' }),
+            createRef: jest.fn().mockResolvedValue({})
+          }
+        }
+      }
+
+      await expect(syncTagRef({
+        github,
+        owner: 'mudman1986',
+        repo: 'auto-assign-copilot-action',
+        tag: 'v2',
+        sha: 'abc123'
+      })).resolves.toBe('created')
+
+      expect(github.rest.git.createRef).toHaveBeenCalledWith({
+        owner: 'mudman1986',
+        repo: 'auto-assign-copilot-action',
+        ref: 'refs/tags/v2',
+        sha: 'abc123'
+      })
+    })
+
+    test('updates the ref when it is created concurrently', async () => {
+      const github = {
+        rest: {
+          git: {
+            getRef: jest.fn().mockRejectedValue({ status: 404, message: 'Not Found' }),
+            updateRef: jest.fn().mockResolvedValue({}),
+            createRef: jest.fn().mockRejectedValue({ status: 422, message: 'Reference already exists' })
+          }
+        }
+      }
+
+      await expect(syncTagRef({
+        github,
+        owner: 'mudman1986',
+        repo: 'auto-assign-copilot-action',
+        tag: 'v2',
+        sha: 'abc123'
+      })).resolves.toBe('updated')
+
+      expect(github.rest.git.updateRef).toHaveBeenCalledWith({
+        owner: 'mudman1986',
+        repo: 'auto-assign-copilot-action',
+        ref: 'tags/v2',
+        sha: 'abc123',
+        force: true
       })
     })
   })

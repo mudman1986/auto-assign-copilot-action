@@ -69,8 +69,68 @@ function getNextReleaseVersion (currentVersion, labels = []) {
   }
 }
 
+function isMissingGitRefError (error) {
+  return Boolean(
+    error &&
+    (
+      error.status === 404 ||
+      (error.status === 422 && /reference does not exist/i.test(error.message || ''))
+    )
+  )
+}
+
+function isExistingGitRefError (error) {
+  return Boolean(
+    error &&
+    error.status === 422 &&
+    /reference already exists/i.test(error.message || '')
+  )
+}
+
+async function syncTagRef ({ github, owner, repo, tag, sha, force = true }) {
+  const ref = `tags/${tag}`
+  const fullRef = `refs/${ref}`
+  let refExists = true
+
+  try {
+    await github.rest.git.getRef({ owner, repo, ref })
+  } catch (error) {
+    if (!isMissingGitRefError(error)) {
+      throw error
+    }
+
+    refExists = false
+  }
+
+  if (refExists) {
+    try {
+      await github.rest.git.updateRef({ owner, repo, ref, sha, force })
+      return 'updated'
+    } catch (error) {
+      if (!isMissingGitRefError(error)) {
+        throw error
+      }
+    }
+  }
+
+  try {
+    await github.rest.git.createRef({ owner, repo, ref: fullRef, sha })
+    return 'created'
+  } catch (error) {
+    if (!isExistingGitRefError(error)) {
+      throw error
+    }
+
+    await github.rest.git.updateRef({ owner, repo, ref, sha, force })
+    return 'updated'
+  }
+}
+
 module.exports = {
   determineReleaseType,
   bumpVersion,
-  getNextReleaseVersion
+  getNextReleaseVersion,
+  isMissingGitRefError,
+  isExistingGitRefError,
+  syncTagRef
 }
