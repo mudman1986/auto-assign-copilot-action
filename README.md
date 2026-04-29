@@ -1,3 +1,4 @@
+<!-- markdownlint-disable-next-line MD041 -->
 <div align="center">
 
 # Auto Assign Copilot to Issues
@@ -129,7 +130,7 @@ The action will autonomously assign issues to Copilot based on intelligent prior
 ### All Inputs
 
 | Input | Description | Required | Default |
-|-------|-------------|----------|---------|
+| ----- | ----------- | -------- | ------- |
 | **`github-token`** | PAT from an account with GitHub Copilot license (requires read access to metadata, read/write access to actions, code, issues, and pull requests) | ✅ Yes | - |
 | `mode` | Assignment mode: `auto` or `refactor` | No | `auto` |
 | `label-override` | Specific label to filter (auto mode only) | No | `""` |
@@ -147,7 +148,7 @@ The action will autonomously assign issues to Copilot based on intelligent prior
 ### Outputs
 
 | Output | Description |
-|--------|-------------|
+| ------ | ----------- |
 | `assigned-issue-number` | Issue number assigned to Copilot |
 | `assigned-issue-url` | Full URL of the assigned issue |
 | `assignment-mode` | Effective mode used (`auto` or `refactor`) |

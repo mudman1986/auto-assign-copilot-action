@@ -238,7 +238,7 @@ jobs:
           echo "Assigned Issue Number: ${{ steps.test.outputs.assigned-issue-number }}"
           echo "Assigned Issue URL: ${{ steps.test.outputs.assigned-issue-url }}"
           echo "Assignment Mode: ${{ steps.test.outputs.assignment-mode }}"
-          
+
           # In dry-run mode, we should get outputs (issue number and URL may be empty if no suitable issue found)
           if [ "${{ matrix.dry-run }}" = "true" ]; then
             echo "✓ Dry-run mode test completed"
