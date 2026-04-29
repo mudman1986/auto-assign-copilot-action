@@ -6,10 +6,6 @@ on:
       - main
   pull_request:
 
-env:
-  FILTER_REGEX_EXCLUDE: '.*/dist/.*'
-  JAVASCRIPT_ES_FILTER_REGEX_EXCLUDE: '.*/dist/.*'
-
 permissions:
   contents: write
   statuses: write
