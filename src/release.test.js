@@ -1,123 +1,65 @@
-/**
- * Tests for release configuration
- * These tests validate the semantic-release configuration and conventional commits
- */
+const { determineReleaseType, bumpVersion, getNextReleaseVersion } = require('./release')
 
-const path = require('path')
-
-describe('Release Configuration', () => {
-  let config
-  const configPath = path.join(__dirname, '..', '.releaserc.js')
-
-  beforeAll(() => {
-    // Clear require cache to get fresh config
-    delete require.cache[require.resolve(configPath)]
-    config = require(configPath)
-  })
-
-  describe('semantic-release configuration', () => {
-    test('should have .releaserc.js file', () => {
-      expect(() => require(configPath)).not.toThrow()
+describe('Release helpers', () => {
+  describe('determineReleaseType', () => {
+    test('defaults to patch when no release labels are present', () => {
+      expect(determineReleaseType()).toBe('patch')
+      expect(determineReleaseType([])).toBe('patch')
+      expect(determineReleaseType([{ name: 'bug' }])).toBe('patch')
     })
 
-    test('should have valid semantic-release configuration', () => {
-      expect(config.branches).toEqual(['main'])
-      expect(config.plugins).toBeDefined()
-      expect(Array.isArray(config.plugins)).toBe(true)
+    test('recognizes explicit release labels', () => {
+      expect(determineReleaseType([{ name: 'release:patch' }])).toBe('patch')
+      expect(determineReleaseType([{ name: 'release:minor' }])).toBe('minor')
+      expect(determineReleaseType([{ name: 'release:major' }])).toBe('major')
     })
 
-    test('should have commit-analyzer plugin configured', () => {
-      const commitAnalyzer = config.plugins.find(p =>
-        Array.isArray(p) && p[0] === '@semantic-release/commit-analyzer'
-      )
-
-      expect(commitAnalyzer).toBeDefined()
-      expect(commitAnalyzer[1].preset).toBe('conventionalcommits')
-      expect(commitAnalyzer[1].releaseRules).toBeDefined()
+    test('treats labels case-insensitively', () => {
+      expect(determineReleaseType([{ name: 'Release:Minor' }])).toBe('minor')
     })
 
-    test('should have release-notes-generator plugin configured', () => {
-      // Can be either the standard plugin or our custom expander
-      const notesGenerator = config.plugins.find(p =>
-        Array.isArray(p) && (
-          p[0] === '@semantic-release/release-notes-generator' ||
-          p[0] === './scripts/release-notes-expander.js'
-        )
-      )
+    test('uses the highest bump when multiple release labels are present', () => {
+      expect(determineReleaseType([
+        { name: 'release:patch' },
+        { name: 'release:minor' }
+      ])).toBe('minor')
 
-      expect(notesGenerator).toBeDefined()
-      expect(notesGenerator[1].preset).toBe('conventionalcommits')
-    })
-
-    test('should NOT have changelog plugin configured (not committed to repo)', () => {
-      const changelog = config.plugins.find(p =>
-        Array.isArray(p) && p[0] === '@semantic-release/changelog'
-      )
-
-      expect(changelog).toBeUndefined()
-    })
-
-    test('should have npm plugin configured with npmPublish disabled', () => {
-      const npm = config.plugins.find(p =>
-        Array.isArray(p) && p[0] === '@semantic-release/npm'
-      )
-
-      expect(npm).toBeDefined()
-      expect(npm[1].npmPublish).toBe(false)
-    })
-
-    test('should NOT have git plugin configured (not compatible with branch protection)', () => {
-      const git = config.plugins.find(p =>
-        Array.isArray(p) && p[0] === '@semantic-release/git'
-      )
-
-      expect(git).toBeUndefined()
-    })
-
-    test('should have github plugin configured', () => {
-      expect(config.plugins).toContain('@semantic-release/github')
+      expect(determineReleaseType([
+        { name: 'release:minor' },
+        { name: 'release:major' }
+      ])).toBe('major')
     })
   })
 
-  describe('conventional commits release rules', () => {
-    let commitAnalyzer
-
-    beforeAll(() => {
-      commitAnalyzer = config.plugins.find(p =>
-        Array.isArray(p) && p[0] === '@semantic-release/commit-analyzer'
-      )
+  describe('bumpVersion', () => {
+    test('bumps patch versions', () => {
+      expect(bumpVersion('2.0.4', 'patch')).toBe('2.0.5')
+      expect(bumpVersion('v2.0.4', 'patch')).toBe('2.0.5')
     })
 
-    test('should release minor version for feat commits', () => {
-      const featRule = commitAnalyzer[1].releaseRules.find(r => r.type === 'feat')
-      expect(featRule.release).toBe('minor')
+    test('bumps minor versions', () => {
+      expect(bumpVersion('2.0.4', 'minor')).toBe('2.1.0')
     })
 
-    test('should release patch version for fix commits', () => {
-      const fixRule = commitAnalyzer[1].releaseRules.find(r => r.type === 'fix')
-      expect(fixRule.release).toBe('patch')
+    test('bumps major versions', () => {
+      expect(bumpVersion('2.0.4', 'major')).toBe('3.0.0')
     })
 
-    test('should not release for chore commits', () => {
-      const choreRule = commitAnalyzer[1].releaseRules.find(r => r.type === 'chore')
-      expect(choreRule.release).toBe(false)
+    test('throws for invalid versions', () => {
+      expect(() => bumpVersion('invalid', 'patch')).toThrow('Invalid semantic version')
     })
 
-    test('should release patch version for refactor commits', () => {
-      const refactorRule = commitAnalyzer[1].releaseRules.find(r => r.type === 'refactor')
-      expect(refactorRule.release).toBe('patch')
+    test('throws for invalid release types', () => {
+      expect(() => bumpVersion('2.0.4', 'nope')).toThrow('Invalid release type')
     })
   })
 
-  describe('package.json', () => {
-    test('should have semantic-release dependencies', () => {
-      const fs = require('fs')
-      const packagePath = path.join(__dirname, '..', 'package.json')
-      const packageJson = JSON.parse(fs.readFileSync(packagePath, 'utf8'))
-
-      expect(packageJson.devDependencies['semantic-release']).toBeDefined()
-      // @semantic-release/changelog and @semantic-release/git may still be in package.json
-      // but are not used in .releaserc.js per semantic-release best practices
+  describe('getNextReleaseVersion', () => {
+    test('returns the release type and bumped version', () => {
+      expect(getNextReleaseVersion('2.0.4', [{ name: 'release:minor' }])).toEqual({
+        releaseType: 'minor',
+        version: '2.1.0'
+      })
     })
   })
 })
