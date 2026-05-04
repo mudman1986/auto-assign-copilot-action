@@ -59,7 +59,7 @@ jobs:
 
       - name: Resolve release metadata
         id: release
-        uses: actions/github-script@v8
+        uses: actions/github-script@v9
         env:
           INPUT_RELEASE_TYPE: ${{ inputs.release-type || '' }}
         with:
@@ -114,7 +114,7 @@ jobs:
 
       - name: Create GitHub release
         if: steps.release.outputs.already_released != 'true'
-        uses: actions/github-script@v8
+        uses: actions/github-script@v9
         env:
           TAG: ${{ steps.release.outputs.tag }}
           TARGET_COMMITISH: ${{ steps.release.outputs.target_commitish }}
@@ -131,7 +131,7 @@ jobs:
 
       - name: Update moving major tag
         if: steps.release.outputs.already_released != 'true'
-        uses: actions/github-script@v8
+        uses: actions/github-script@v9
         env:
           MAJOR_TAG: ${{ steps.release.outputs.major_tag }}
           TARGET_COMMITISH: ${{ steps.release.outputs.target_commitish }}
