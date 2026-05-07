@@ -130,6 +130,7 @@ describe('Workflow executeWorkflow', () => {
       expect(result.issue.number).toBe(42)
       expect(result.issue.title).toBe('Test Issue')
       expect(result.issue.url).toBe('https://github.com/test/repo/issues/42')
+      expect(result.effectiveMode).toBe('auto')
 
       // Should not call mutation in dry-run mode
       const mutations = mockGithub.graphql.mock.calls.filter(
@@ -1379,6 +1380,7 @@ describe('Workflow executeWorkflow', () => {
       expect(result).not.toBeNull()
       expect(result.issue).toBeDefined()
       expect(result.issue.number).toBe(101)
+      expect(result.effectiveMode).toBe('refactor')
 
       // Verify createIssue was called
       const createIssueCalls = mockGithub.graphql.mock.calls.filter(
