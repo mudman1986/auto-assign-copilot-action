@@ -739,7 +739,7 @@ module.exports = async ({
       logger.info(`[DRY RUN] Would assign ${type} #${issue.number} to Copilot`)
       logger.info(`[DRY RUN] Issue title: ${issue.title}`)
       logger.info(`[DRY RUN] Issue URL: ${issue.url}`)
-      return { issue }
+      return { issue, effectiveMode }
     }
 
     logger.info(`Assigning ${type} #${issue.number} to Copilot...`)
@@ -747,7 +747,7 @@ module.exports = async ({
     logger.info(`✓ Successfully assigned ${type} #${issue.number} to Copilot`)
     logger.info(`  Title: ${issue.title}`)
     logger.info(`  URL: ${issue.url}`)
-    return { issue }
+    return { issue, effectiveMode }
   }
 
   // Step 0: Determine mode based on recent closed issues (for issue close events)
@@ -1028,7 +1028,8 @@ module.exports = async ({
           number: 0,
           title: issueTitle,
           url: '[DRY RUN - would create new refactor issue]'
-        }
+        },
+        effectiveMode
       }
     }
 
@@ -1108,7 +1109,8 @@ module.exports = async ({
         number: res.createIssue.issue.number,
         title: res.createIssue.issue.title,
         url: res.createIssue.issue.url
-      }
+      },
+      effectiveMode
     }
   }
 
@@ -1747,7 +1749,7 @@ async function run () {
     // Set outputs
     core.setOutput('assigned-issue-number', result?.issue?.number?.toString() || '')
     core.setOutput('assigned-issue-url', result?.issue?.url || '')
-    core.setOutput('assignment-mode', mode)
+    core.setOutput('assignment-mode', result?.effectiveMode || mode)
 
     core.info('✓ Action completed successfully')
   } catch (error) {

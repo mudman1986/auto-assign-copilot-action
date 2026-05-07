@@ -71,7 +71,7 @@ async function run () {
     // Set outputs
     core.setOutput('assigned-issue-number', result?.issue?.number?.toString() || '')
     core.setOutput('assigned-issue-url', result?.issue?.url || '')
-    core.setOutput('assignment-mode', mode)
+    core.setOutput('assignment-mode', result?.effectiveMode || mode)
 
     core.info('✓ Action completed successfully')
   } catch (error) {
