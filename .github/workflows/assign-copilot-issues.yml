@@ -67,10 +67,10 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v6
+        uses: actions/checkout@v6.0.2
 
       - name: Assign Copilot to issue
-        uses: mudman1986/auto-assign-copilot-action@v2.0.5
+        uses: mudman1986/auto-assign-copilot-action@v2.0.8
         with:
           github-token: ${{ secrets.COPILOT_ASSIGN_PAT }}
           mode: ${{ inputs.mode || 'auto' }}
